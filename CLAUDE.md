@@ -30,7 +30,7 @@ mix dialyzer      # Type checking
 
 ## Current Status
 
-**Scaffolded — ready for Phase 1 (Core Types + JSON-RPC).**
+**Phase 1 COMPLETE (83 tests, credo clean, dialyzer clean). Ready for Phase 2 (TaskStore + EventQueue + AgentExecutor).**
 
 See `docs/implementation-plan.md` for the full 6-phase plan.
 

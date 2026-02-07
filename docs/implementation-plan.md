@@ -12,30 +12,30 @@ Foundation types and JSON-RPC encode/decode layer.
 
 ### Tasks
 
-- [ ] **A2AEx.Types** — Core A2A protocol types
-  - [ ] `A2AEx.Part` — Tagged union: Text, File, Data (with FileContent sub-struct)
-  - [ ] `A2AEx.Message` — role (:user/:agent) + parts + metadata
-  - [ ] `A2AEx.TaskStatus` — state enum + message + timestamp
-  - [ ] `A2AEx.Task` — id, context_id, status, artifacts, metadata
-  - [ ] `A2AEx.Artifact` — artifact_id, name, description, parts, metadata
-  - [ ] `A2AEx.AgentCard` — name, description, url, version, capabilities, skills
-  - [ ] `A2AEx.Capabilities` — streaming, push_notifications, state_transition_history
-  - [ ] `A2AEx.Skill` — id, name, description, tags, examples
-  - [ ] `A2AEx.TaskStatusUpdateEvent` — id, status, final flag
-  - [ ] `A2AEx.TaskArtifactUpdateEvent` — id, artifact
-  - [ ] `A2AEx.PushNotificationConfig` — url, token, authentication
-  - [ ] JSON encoding for all types (derive Jason.Encoder or custom)
+- [x] **A2AEx.Types** — Core A2A protocol types
+  - [x] `A2AEx.Part` — Tagged union: Text, File, Data (with FileContent sub-struct)
+  - [x] `A2AEx.Message` — role (:user/:agent) + parts + metadata
+  - [x] `A2AEx.TaskStatus` — state enum + message + timestamp
+  - [x] `A2AEx.Task` — id, context_id, status, artifacts, metadata
+  - [x] `A2AEx.Artifact` — artifact_id, name, description, parts, metadata
+  - [x] `A2AEx.AgentCard` — name, description, url, version, capabilities, skills
+  - [x] `A2AEx.Capabilities` — streaming, push_notifications, state_transition_history
+  - [x] `A2AEx.Skill` — id, name, description, tags, examples
+  - [x] `A2AEx.TaskStatusUpdateEvent` — id, status, final flag
+  - [x] `A2AEx.TaskArtifactUpdateEvent` — id, artifact
+  - [x] `A2AEx.PushNotificationConfig` — url, token, authentication
+  - [x] JSON encoding for all types (custom Jason.Encoder implementations)
 
-- [ ] **A2AEx.JSONRPC** — JSON-RPC 2.0 layer
-  - [ ] `Request` struct — jsonrpc, method, params, id
-  - [ ] `Response` struct — jsonrpc, result, id
-  - [ ] `Error` struct — jsonrpc, error (code + message + data), id
-  - [ ] `decode_request/1` — parse JSON string → Request struct
-  - [ ] `encode_response/1` — Response/Error struct → JSON string
-  - [ ] Standard error codes: -32700 (parse), -32600 (invalid), -32601 (not found), -32602 (params), -32603 (internal)
-  - [ ] A2A-specific error codes: -32001 (task not found), -32002 (task not cancelable), -32003 (push not supported), -32004 (unsupported operation), -32005 (content type not supported)
+- [x] **A2AEx.JSONRPC** — JSON-RPC 2.0 layer
+  - [x] `Request` map — jsonrpc, method, params, id
+  - [x] `Response` map — jsonrpc, result, id
+  - [x] `Error` struct — type, message, details + error_map for JSON-RPC format
+  - [x] `decode_request/1` — parse JSON string → request map
+  - [x] `encode_response/2` — result + id → JSON string
+  - [x] Standard error codes: -32700 (parse), -32600 (invalid), -32601 (not found), -32602 (params), -32603 (internal)
+  - [x] A2A-specific error codes: -32001 through -32007 + -31401 (unauth) + -31403 (unauthorized)
 
-- [ ] **Tests** — Types serialization round-trip, JSON-RPC encode/decode, error codes
+- [x] **Tests** — 83 tests: types serialization round-trip, JSON-RPC encode/decode, error codes
 
 ### Reference Files
 - `/workspace/a2a-go/a2a.go` — All type definitions
