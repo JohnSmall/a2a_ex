@@ -30,7 +30,7 @@ mix dialyzer      # Type checking
 
 ## Current Status
 
-**Phase 1 COMPLETE (83 tests, credo clean, dialyzer clean). Ready for Phase 2 (TaskStore + EventQueue + AgentExecutor).**
+**Phase 2 COMPLETE (114 tests, credo clean, dialyzer clean). Ready for Phase 3 (RequestHandler + Server).**
 
 See `docs/implementation-plan.md` for the full 6-phase plan.
 
@@ -65,12 +65,18 @@ A2AEx.Server (Plug.Router)
 | `A2AEx.PushConfig` / `PushAuthInfo` / `TaskPushConfig` | `push.ex` | Push notification types |
 | `A2AEx.ID` | `id.ex` | UUID v4 generation |
 
-#### Phase 2+ (Planned)
+#### Phase 2 (Done — 31 new tests, 114 total)
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.TaskStore` | `task_store.ex` | Task persistence behaviour (get/save/delete) |
+| `A2AEx.TaskStore.InMemory` | `task_store/in_memory.ex` | GenServer + ETS implementation |
+| `A2AEx.EventQueue` | `event_queue.ex` | Per-task event delivery (GenServer + Registry) |
+| `A2AEx.RequestContext` | `agent_executor.ex` | Execution request context struct |
+| `A2AEx.AgentExecutor` | `agent_executor.ex` | Agent execution behaviour (execute/cancel) |
+
+#### Phase 3+ (Planned)
 | Module | Purpose | Phase |
 |--------|---------|-------|
-| `A2AEx.TaskStore` | Task persistence behaviour + InMemory | 2 |
-| `A2AEx.EventQueue` | Per-task SSE event delivery | 2 |
-| `A2AEx.AgentExecutor` | Agent execution behaviour | 2 |
 | `A2AEx.RequestHandler` | Business logic for all 10 methods | 3 |
 | `A2AEx.Server` | Plug.Router HTTP endpoint | 3 |
 | `A2AEx.ADKExecutor` | Wraps ADK.Runner as AgentExecutor | 4 |

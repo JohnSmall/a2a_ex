@@ -54,28 +54,30 @@ Storage and execution behaviours with in-memory implementations.
 
 ### Tasks
 
-- [ ] **A2AEx.TaskStore** — Behaviour for task persistence
-  - [ ] `@callback get(store, task_id) :: {:ok, Task.t()} | {:error, :not_found}`
-  - [ ] `@callback save(store, Task.t()) :: :ok | {:error, term()}`
-  - [ ] `@callback delete(store, task_id) :: :ok`
+- [x] **A2AEx.TaskStore** — Behaviour for task persistence
+  - [x] `@callback get(store, task_id) :: {:ok, Task.t()} | {:error, :not_found}`
+  - [x] `@callback save(store, Task.t()) :: :ok | {:error, term()}`
+  - [x] `@callback delete(store, task_id) :: :ok`
 
-- [ ] **A2AEx.TaskStore.InMemory** — GenServer + ETS implementation
-  - [ ] GenServer for serialized writes
-  - [ ] ETS table for concurrent reads
-  - [ ] Keyed by task_id
+- [x] **A2AEx.TaskStore.InMemory** — GenServer + ETS implementation
+  - [x] GenServer for serialized writes
+  - [x] ETS table for concurrent reads
+  - [x] Keyed by task_id
 
-- [ ] **A2AEx.EventQueue** — Per-task event delivery
-  - [ ] GenServer per task (started on demand)
-  - [ ] `enqueue(task_id, event)` — send event to all subscribers
-  - [ ] `subscribe(task_id)` — returns a stream or callback-based subscription
-  - [ ] `close(task_id)` — signal completion, clean up
-  - [ ] Registry-based lookup (Elixir Registry)
+- [x] **A2AEx.EventQueue** — Per-task event delivery
+  - [x] GenServer per task (started on demand via DynamicSupervisor)
+  - [x] `enqueue(task_id, event)` — send event to all subscribers
+  - [x] `subscribe(task_id)` — subscribers receive `{:a2a_event, task_id, event}` messages
+  - [x] `close(task_id)` — signal completion via `{:a2a_done, task_id}`, clean up
+  - [x] Registry-based lookup (Elixir Registry)
+  - [x] `get_or_create(task_id)` — start or return existing queue
 
-- [ ] **A2AEx.AgentExecutor** — Behaviour for agent execution
-  - [ ] `@callback execute(executor, request_params, event_queue) :: :ok | {:error, term()}`
-  - [ ] `@callback cancel(executor, request_params) :: :ok | {:error, term()}`
+- [x] **A2AEx.AgentExecutor** — Behaviour for agent execution
+  - [x] `@callback execute(context, task_id) :: :ok | {:error, term()}`
+  - [x] `@callback cancel(context, task_id) :: :ok | {:error, term()}`
+  - [x] `A2AEx.RequestContext` struct (task_id, context_id, message, task, metadata)
 
-- [ ] **Tests** — TaskStore CRUD, EventQueue pub/sub, AgentExecutor mock
+- [x] **Tests** — TaskStore CRUD, EventQueue pub/sub, AgentExecutor mock (31 new tests)
 
 ### Reference Files
 - `/workspace/a2a-go/a2asrv/tasks.go` — TaskStore interface

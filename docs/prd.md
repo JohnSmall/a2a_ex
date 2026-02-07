@@ -4,7 +4,7 @@
 - **Project**: A2AEx - Elixir implementation of the A2A protocol
 - **Version**: 0.2.0
 - **Date**: 2026-02-07
-- **Status**: Phase 1 complete (Core Types + JSON-RPC). Ready for Phase 2.
+- **Status**: Phase 2 complete (TaskStore + EventQueue + AgentExecutor). Ready for Phase 3.
 - **GitHub**: github.com/JohnSmall/a2a_ex
 - **Depends on**: ADK (github.com/JohnSmall/adk)
 
@@ -240,9 +240,9 @@ Key interfaces:
 | `A2AEx.Params` (TaskIDParams, etc.) | Done | — | 1 |
 | `A2AEx.Push` (PushConfig, etc.) | Done | — | 1 |
 | `A2AEx.ID` (UUID v4) | Done | 2 | 1 |
-| `A2AEx.TaskStore` behaviour + InMemory | Planned | — | 2 |
-| `A2AEx.EventQueue` | Planned | — | 2 |
-| `A2AEx.AgentExecutor` behaviour | Planned | — | 2 |
+| `A2AEx.TaskStore` behaviour + InMemory | Done | 9 | 2 |
+| `A2AEx.EventQueue` | Done | 16 | 2 |
+| `A2AEx.AgentExecutor` + `RequestContext` | Done | 6 | 2 |
 | `A2AEx.RequestHandler` | Planned | — | 3 |
 | `A2AEx.Server` (Plug.Router) | Planned | — | 3 |
 | `A2AEx.ADKExecutor` | Planned | — | 4 |
@@ -250,7 +250,7 @@ Key interfaces:
 | `A2AEx.RemoteAgent` | Planned | — | 4 |
 | `A2AEx.Client` | Planned | — | 5 |
 
-**Total: 83 tests, credo clean, dialyzer clean.**
+**Total: 114 tests, credo clean, dialyzer clean.**
 
 ---
 

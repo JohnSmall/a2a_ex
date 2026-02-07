@@ -22,7 +22,7 @@ A2AEx provides:
 
 ## 2. Current Status
 
-**Phase 1 COMPLETE — 83 tests, credo clean, dialyzer clean. Ready for Phase 2.**
+**Phase 2 COMPLETE — 114 tests, credo clean, dialyzer clean. Ready for Phase 3.**
 
 ### What's Built (Phase 1: Core Types + JSON-RPC)
 
@@ -50,6 +50,16 @@ A2AEx provides:
 | `A2AEx.Error` | `lib/a2a_ex/error.ex` | 15 error types with messages |
 | `A2AEx.JSONRPC` | `lib/a2a_ex/jsonrpc.ex` | JSON-RPC 2.0 encode/decode |
 | `A2AEx.ID` | `lib/a2a_ex/id.ex` | UUID v4 generation |
+
+### What's Built (Phase 2: TaskStore + EventQueue + AgentExecutor)
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.TaskStore` | `lib/a2a_ex/task_store.ex` | Behaviour: `get/2`, `save/2`, `delete/2` |
+| `A2AEx.TaskStore.InMemory` | `lib/a2a_ex/task_store/in_memory.ex` | GenServer + ETS (serialized writes, concurrent reads) |
+| `A2AEx.EventQueue` | `lib/a2a_ex/event_queue.ex` | Per-task GenServer + Registry; subscribe/enqueue/close |
+| `A2AEx.RequestContext` | `lib/a2a_ex/agent_executor.ex` | Execution context (task_id, context_id, message, task) |
+| `A2AEx.AgentExecutor` | `lib/a2a_ex/agent_executor.ex` | Behaviour: `execute/2`, `cancel/2` |
 
 ### What's Built in ADK (Dependency)
 
