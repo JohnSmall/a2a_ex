@@ -92,34 +92,34 @@ JSON-RPC method handlers and Plug-based HTTP server.
 
 ### Tasks
 
-- [ ] **A2AEx.RequestHandler** — Business logic for all A2A methods
-  - [ ] `handle_message_send/2` — Create/resume task, execute agent, collect result
-  - [ ] `handle_message_stream/2` — Create/resume task, execute agent, return SSE stream
-  - [ ] `handle_tasks_get/2` — Lookup task in TaskStore
-  - [ ] `handle_tasks_cancel/2` — Cancel running task via AgentExecutor
-  - [ ] `handle_tasks_resubscribe/2` — Re-subscribe to existing task's event stream
-  - [ ] `handle_push_config_set/2` — Store push notification config
-  - [ ] `handle_push_config_get/2` — Retrieve push config
-  - [ ] `handle_push_config_delete/2` — Remove push config
-  - [ ] `handle_push_config_list/2` — List push configs for task
-  - [ ] `handle_get_extended_card/2` — Return extended agent card
-  - [ ] Task lifecycle: create if new context_id, resume if existing
+- [x] **A2AEx.RequestHandler** — Business logic for all A2A methods
+  - [x] `handle_message_send/2` — Create/resume task, execute agent, collect result
+  - [x] `handle_message_stream/2` — Create/resume task, execute agent, return SSE stream
+  - [x] `handle_tasks_get/2` — Lookup task in TaskStore
+  - [x] `handle_tasks_cancel/2` — Cancel running task via AgentExecutor
+  - [x] `handle_tasks_resubscribe/2` — Re-subscribe to existing task's event stream
+  - [x] `handle_push_config_set/2` — Store push notification config
+  - [x] `handle_push_config_get/2` — Retrieve push config
+  - [x] `handle_push_config_delete/2` — Remove push config
+  - [x] `handle_push_config_list/2` — List push configs for task
+  - [x] `handle_get_extended_card/2` — Return extended agent card
+  - [x] Task lifecycle: create if new context_id, resume if existing
 
-- [ ] **A2AEx.PushConfigStore** — Behaviour + InMemory implementation
-  - [ ] Store/retrieve/delete push notification configs keyed by task_id
+- [x] **A2AEx.PushConfigStore** — Behaviour + InMemory implementation
+  - [x] Store/retrieve/delete push notification configs keyed by task_id
 
-- [ ] **A2AEx.PushSender** — Webhook delivery
-  - [ ] POST task events to configured webhook URLs
-  - [ ] Authentication token in headers
+- [x] **A2AEx.PushSender** — Webhook delivery
+  - [x] POST task events to configured webhook URLs
+  - [x] Authentication token in headers
 
-- [ ] **A2AEx.Server** — Plug.Router HTTP endpoint
-  - [ ] `POST /` — JSON-RPC dispatch (parse request, route to handler, return response)
-  - [ ] `GET /.well-known/agent.json` — Serve agent card
-  - [ ] SSE response support for streaming methods
-  - [ ] Content-type validation (application/json)
-  - [ ] Error handling (malformed requests, unknown methods)
+- [x] **A2AEx.Server** — Plug-based HTTP endpoint (@behaviour Plug)
+  - [x] `POST /` — JSON-RPC dispatch (parse request, route to handler, return response)
+  - [x] `GET /.well-known/agent.json` — Serve agent card
+  - [x] SSE response support for streaming methods
+  - [x] Content-type validation (application/json)
+  - [x] Error handling (malformed requests, unknown methods)
 
-- [ ] **Tests** — RequestHandler unit tests (mock executor), Server integration tests (Plug.Test)
+- [x] **Tests** — RequestHandler unit tests (mock executor), Server integration tests (Plug.Test), PushConfigStore tests (158 total)
 
 ### Reference Files
 - `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch

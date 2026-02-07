@@ -22,9 +22,9 @@ A2AEx provides:
 
 ## 2. Current Status
 
-**Phase 2 COMPLETE — 114 tests, credo clean, dialyzer clean. Ready for Phase 3.**
+**Phase 3 COMPLETE — 158 tests, credo clean, dialyzer clean. Ready for Phase 4.**
 
-### What's Built (Phase 1: Core Types + JSON-RPC)
+### What's Built (Phase 1: Core Types + JSON-RPC — 83 tests)
 
 | Module | File | Purpose |
 |--------|------|---------|
@@ -51,7 +51,7 @@ A2AEx provides:
 | `A2AEx.JSONRPC` | `lib/a2a_ex/jsonrpc.ex` | JSON-RPC 2.0 encode/decode |
 | `A2AEx.ID` | `lib/a2a_ex/id.ex` | UUID v4 generation |
 
-### What's Built (Phase 2: TaskStore + EventQueue + AgentExecutor)
+### What's Built (Phase 2: TaskStore + EventQueue + AgentExecutor — 31 tests)
 
 | Module | File | Purpose |
 |--------|------|---------|
@@ -60,6 +60,25 @@ A2AEx provides:
 | `A2AEx.EventQueue` | `lib/a2a_ex/event_queue.ex` | Per-task GenServer + Registry; subscribe/enqueue/close |
 | `A2AEx.RequestContext` | `lib/a2a_ex/agent_executor.ex` | Execution context (task_id, context_id, message, task) |
 | `A2AEx.AgentExecutor` | `lib/a2a_ex/agent_executor.ex` | Behaviour: `execute/2`, `cancel/2` |
+
+### What's Built (Phase 3: RequestHandler + Server — 48 tests)
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.PushConfigStore` | `lib/a2a_ex/push_config_store.ex` | Behaviour: `save/3`, `get/3`, `list/2`, `delete/3` |
+| `A2AEx.PushConfigStore.InMemory` | `lib/a2a_ex/push_config_store/in_memory.ex` | GenServer + ETS, composite key `{task_id, config_id}` |
+| `A2AEx.PushSender` | `lib/a2a_ex/push_sender.ex` | Behaviour: `send_push/2` |
+| `A2AEx.PushSender.HTTP` | `lib/a2a_ex/push_sender.ex` | Req-based webhook delivery (Bearer/Basic auth) |
+| `A2AEx.RequestHandler` | `lib/a2a_ex/request_handler.ex` | Struct config + dispatch for all 10 JSON-RPC methods |
+| `A2AEx.Server` | `lib/a2a_ex/server.ex` | `@behaviour Plug` — agent card + JSON-RPC + SSE streaming |
+
+### What's Next (Phase 4: ADK Integration / Bridge)
+
+| Module | Purpose |
+|--------|---------|
+| `A2AEx.ADKExecutor` | Wraps `ADK.Runner` as `A2AEx.AgentExecutor` |
+| `A2AEx.Converter` | ADK ↔ A2A type conversion (parts, events, messages) |
+| `A2AEx.RemoteAgent` | ADK agent backed by A2A client |
 
 ### What's Built in ADK (Dependency)
 
@@ -132,16 +151,27 @@ The ADK package at `/workspace/adk/` has Phases 1-3 complete (168 tests):
 
 ## 5. Architecture
 
-### A2A Go SDK Architecture (Reference)
+### Server Stack
 
 ```
-HTTP Transport (net/http)
-    → JSON-RPC Handler (parse method, dispatch)
-        → RequestHandler (task lifecycle, business logic)
-            → AgentExecutor (Execute/Cancel)
-            → TaskStore (CRUD tasks)
-            → EventQueue (SSE delivery)
-            → PushConfigStore + PushSender (webhooks)
+A2AEx.Server (@behaviour Plug)
+    → Routes: GET /.well-known/agent.json, POST /
+    → JSON-RPC: A2AEx.JSONRPC.decode_request/1
+        → Sync methods: RequestHandler.handle → send_jsonrpc_response
+        → Stream methods: RequestHandler.handle → {:stream, task_id} → SSE
+            → A2AEx.RequestHandler (dispatch tables + apply/3)
+                → message/send: parse → validate → prepare_execution → EventQueue → spawn_executor → collect → result
+                → message/stream: same but returns {:stream, task_id} for SSE
+                → tasks/get: TaskStore.get + optional history truncation
+                → tasks/cancel: validate cancelable + update status
+                → tasks/resubscribe: EventQueue.subscribe for existing queue
+                → push config: PushConfigStore CRUD (save/get/list/delete)
+                → extended card: return configured AgentCard
+                    → A2AEx.AgentExecutor (execute/cancel — the actual agent)
+                    → A2AEx.TaskStore (get/save/delete — task persistence)
+                    → A2AEx.EventQueue (subscribe/enqueue/close — SSE delivery)
+                    → A2AEx.PushConfigStore (save/get/list/delete — webhook config)
+                    → A2AEx.PushSender (send_push — webhook delivery)
 ```
 
 ### Elixir Mapping
@@ -151,17 +181,19 @@ HTTP Transport (net/http)
 | `AgentExecutor` interface | `A2AEx.AgentExecutor` behaviour | `@callback` |
 | `TaskStore` interface | `A2AEx.TaskStore` behaviour | `@callback` |
 | `InMemoryTaskStore` | `A2AEx.TaskStore.InMemory` | GenServer + ETS |
-| `EventQueue` + Manager | `A2AEx.EventQueue` | GenServer + Registry |
-| `RequestHandler` | `A2AEx.RequestHandler` | Module functions |
-| `A2AServer` | `A2AEx.Server` | Plug.Router |
+| `EventQueue` + Manager | `A2AEx.EventQueue` | GenServer + Registry + DynamicSupervisor |
+| `RequestHandler` | `A2AEx.RequestHandler` | Struct config + dispatch tables |
+| `A2AServer` | `A2AEx.Server` | `@behaviour Plug` (manual routing) |
 | `JSONRPCHandler` | `A2AEx.JSONRPC` | Module functions |
-| `Client` | `A2AEx.Client` | Req HTTP client |
-| ADK Executor | `A2AEx.ADKExecutor` | Wraps ADK.Runner |
-| Part/Event converters | `A2AEx.Converter` | Pure functions |
+| `PushConfigStore` | `A2AEx.PushConfigStore` | Behaviour + InMemory (GenServer + ETS) |
+| `PushSender` | `A2AEx.PushSender.HTTP` | Req-based HTTP |
+| `Client` | `A2AEx.Client` | Req HTTP client (Phase 5) |
+| ADK Executor | `A2AEx.ADKExecutor` | Wraps ADK.Runner (Phase 4) |
+| Part/Event converters | `A2AEx.Converter` | Pure functions (Phase 4) |
 | `AgentCard` | `A2AEx.AgentCard` | Struct |
-| `RemoteAgent` | `A2AEx.RemoteAgent` | `@behaviour ADK.Agent` |
+| `RemoteAgent` | `A2AEx.RemoteAgent` | `@behaviour ADK.Agent` (Phase 4) |
 
-### ADK-A2A Bridge
+### ADK-A2A Bridge (Phase 4)
 
 The bridge connects ADK's event-sourced model to A2A's task-based model:
 
@@ -196,17 +228,18 @@ Read these files in order when implementing each phase:
 - `/workspace/a2a-go/internal/jsonrpc/jsonrpc.go` — Error codes, method names
 - `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSON-RPC handler, request/response structs
 
-### Phase 2: Storage + Execution
+### Phase 2: Storage + Execution (DONE)
 - `/workspace/a2a-go/a2asrv/tasks.go` — TaskStore interface
 - `/workspace/a2a-go/a2asrv/eventqueue/` — EventQueue, Manager, InMemory implementations
 - `/workspace/a2a-go/a2asrv/agentexec.go` — AgentExecutor interface
 
-### Phase 3: Server
+### Phase 3: Server (DONE)
 - `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch
 - `/workspace/a2a-go/a2asrv/handler.go` — RequestHandler interface + implementation
 - `/workspace/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
+- `/workspace/a2a-go/internal/sse/sse.go` — SSE writer (WriteHeaders, WriteData, WriteKeepAlive)
 
-### Phase 4: ADK Bridge
+### Phase 4: ADK Bridge (NEXT)
 - `/workspace/adk-go/server/adka2a/executor.go` — ADK Runner → AgentExecutor wrapper
 - `/workspace/adk-go/server/adka2a/part_converter.go` — Part type conversion
 - `/workspace/adk-go/server/adka2a/event_converter.go` — Event → A2A event conversion
@@ -218,12 +251,85 @@ Read these files in order when implementing each phase:
 
 ---
 
-## 7. Development Workflow
+## 7. How Phase 3 Works (RequestHandler + Server)
+
+### RequestHandler Design
+
+The `A2AEx.RequestHandler` is a struct (not a GenServer) containing pluggable configuration:
+
+```elixir
+%A2AEx.RequestHandler{
+  executor: MyExecutor,                              # AgentExecutor module
+  task_store: {A2AEx.TaskStore.InMemory, store_pid}, # {module, server} tuple
+  agent_card: %A2AEx.AgentCard{...},                 # For /.well-known/agent.json
+  push_config_store: {PushConfigStore.InMemory, pid}, # Optional
+  push_sender: A2AEx.PushSender.HTTP,                # Optional
+  extended_card: %A2AEx.AgentCard{...}               # Optional
+}
+```
+
+Method dispatch uses module attribute maps + `apply/3`:
+```elixir
+@sync_methods %{
+  "message/send" => :handle_message_send,
+  "tasks/get" => :handle_tasks_get,
+  ...
+}
+@stream_methods %{
+  "message/stream" => :handle_message_stream,
+  "tasks/resubscribe" => :handle_tasks_resubscribe
+}
+```
+
+### message/send Flow
+
+1. `parse_send_params/1` — Parse raw map → `MessageSendParams`
+2. `validate_message/1` — Check non-empty parts
+3. `prepare_execution/2` — Create or resume task (check context_id match)
+4. `EventQueue.get_or_create/1` — Start or get existing queue
+5. `EventQueue.subscribe/1` — Calling process receives events
+6. `spawn_executor/3` — Spawned process: try executor.execute, rescue → failed status, always close queue
+7. `collect_events/2` — Receive loop: apply status/artifact events to task, stop on `final: true`
+8. `load_task_result/2` — Reload from TaskStore, return as map
+
+### message/stream Flow
+
+Same as message/send through step 6, but returns `{:stream, task_id}` immediately. The Server process then receives events via its mailbox and sends them as SSE chunks.
+
+### Server SSE
+
+```elixir
+defp stream_events(conn, task_id, request_id) do
+  receive do
+    {:a2a_event, ^task_id, event} ->
+      event_map = A2AEx.Event.to_map(event)
+      resp = A2AEx.JSONRPC.response_map(event_map, request_id)
+      case send_sse_event(conn, resp) do
+        {:ok, conn} -> stream_events(conn, task_id, request_id)
+        {:error, _} -> conn
+      end
+    {:a2a_done, ^task_id} -> conn
+  after
+    60_000 -> # timeout
+  end
+end
+```
+
+### Executor Error Handling
+
+Executors run in a spawned process with try/rescue/after:
+- On success: executor returns `:ok`, events already enqueued
+- On crash: rescue catches exception, enqueues a `TaskStatusUpdateEvent` with `:failed` state
+- Always: `EventQueue.close(task_id)` in `after` block (sends `{:a2a_done, task_id}`)
+
+---
+
+## 8. Development Workflow
 
 ### Running Tests
 ```bash
 cd /workspace/a2a_ex
-mix test                    # Run all tests
+mix test                    # Run all tests (158)
 mix test --trace            # Verbose output
 mix credo                   # Static analysis
 mix dialyzer                # Type checking
@@ -235,6 +341,7 @@ mix dialyzer                # Type checking
 - Structs: `defstruct` + `@type t :: %__MODULE__{}`
 - Errors: `{:ok, result}` / `{:error, reason}` tuples
 - Tests: Mirror `lib/` structure under `test/`; use `async: true`
+- Store references: `{module, GenServer.server()}` tuples for pluggable stores
 - Verify: `mix test && mix credo && mix dialyzer`
 
 ### Gotchas (from ADK + A2AEx experience)
@@ -247,24 +354,30 @@ mix dialyzer                # Type checking
 7. **JSON camelCase**: A2A protocol uses camelCase JSON keys (e.g., `contextId`, `taskId`, `messageId`). Elixir structs use snake_case atoms. Implement custom `Jason.Encoder` + `from_map/1` for conversion.
 8. **Kind discriminator**: All A2A events/parts/tasks use a `"kind"` field in JSON for polymorphic decode. Always include it in `to_map/1` output.
 9. **Go SDK restructured**: The A2A Go SDK moved from flat files to packages: `a2a/` (types), `a2asrv/` (server), `a2aclient/` (client). Check actual file locations before reading.
+10. **Plug.Router conflict**: Do NOT use `Plug.Router` — its generated `call/2` conflicts with custom overrides. Use `@behaviour Plug` with manual routing via `{conn.method, conn.path_info}` pattern matching.
+11. **`use Plug.Test` deprecated**: Use `import Plug.Test` + `import Plug.Conn` in tests.
+12. **Multi-clause defaults**: For multi-clause functions with defaults, Elixir requires a header: `def foo(a, b \\ nil)` then clauses without defaults.
+13. **Dialyzer strict types**: If type spec says `String.t()` but runtime value can be nil (e.g., from `from_map`), use catch-all guards: `defp f(id) when is_binary(id) and id != "", do: :ok; defp f(_), do: :error`.
+14. **Registry cleanup is async**: After `GenServer.stop`, `Process.sleep(10)` before checking Registry in tests.
+15. **Cyclomatic complexity**: Use module attribute maps + `apply/3` for dispatch instead of large case statements.
 
 ---
 
-## 8. Quick Commands
+## 9. Quick Commands
 
 ```bash
 cd /workspace/a2a_ex
 mix deps.get       # Fetch dependencies (including ADK from GitHub)
-mix test           # Run tests
-mix credo          # Static analysis
-mix dialyzer       # Type checking
+mix test           # Run tests (158 passing)
+mix credo          # Static analysis (0 issues)
+mix dialyzer       # Type checking (0 errors)
 iex -S mix         # Interactive shell
 mix clean && mix compile  # Clean build
 ```
 
 ---
 
-## 9. Key Contacts / Context
+## 10. Key Contacts / Context
 
 - **Project owner**: John Small (jds340@gmail.com)
 - **A2AEx project**: `/workspace/a2a_ex/` (github.com/JohnSmall/a2a_ex)

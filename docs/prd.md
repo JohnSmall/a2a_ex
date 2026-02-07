@@ -2,9 +2,9 @@
 
 ## Document Info
 - **Project**: A2AEx - Elixir implementation of the A2A protocol
-- **Version**: 0.2.0
+- **Version**: 0.3.0
 - **Date**: 2026-02-07
-- **Status**: Phase 2 complete (TaskStore + EventQueue + AgentExecutor). Ready for Phase 3.
+- **Status**: Phase 3 complete (RequestHandler + Server). Ready for Phase 4.
 - **GitHub**: github.com/JohnSmall/a2a_ex
 - **Depends on**: ADK (github.com/JohnSmall/adk)
 
@@ -100,7 +100,7 @@ Key interfaces:
 ```
 ┌─────────────────────────────────────────┐
 │              A2AEx.Server               │
-│  (Plug Router - HTTP + JSON-RPC)        │
+│  (@behaviour Plug - HTTP + JSON-RPC)    │
 │                                         │
 │  POST /  → JSON-RPC dispatch            │
 │  GET /.well-known/agent.json → card     │
@@ -110,11 +110,13 @@ Key interfaces:
 ┌─────────▼───────────────────────────────┐
 │          A2AEx.RequestHandler           │
 │  (Business logic for all 10 methods)    │
+│  (Dispatch tables + apply/3)            │
 │                                         │
 │  message/send → Execute + collect       │
 │  message/stream → Execute + SSE         │
 │  tasks/get → TaskStore.get              │
 │  tasks/cancel → AgentExecutor.cancel    │
+│  push config → PushConfigStore CRUD     │
 └────┬──────────┬──────────┬──────────────┘
      │          │          │
 ┌────▼───┐ ┌───▼────┐ ┌───▼──────────┐
@@ -127,12 +129,12 @@ Key interfaces:
 
 | Go SDK | Elixir A2AEx | Pattern |
 |--------|-------------|---------|
-| `AgentExecutor` interface | `A2AEx.AgentExecutor` behaviour | `@callback execute/3`, `@callback cancel/2` |
+| `AgentExecutor` interface | `A2AEx.AgentExecutor` behaviour | `@callback execute/2`, `@callback cancel/2` |
 | `TaskStore` interface | `A2AEx.TaskStore` behaviour | `@callback get/2`, `@callback save/2` |
 | `InMemoryTaskStore` | `A2AEx.TaskStore.InMemory` | GenServer + ETS |
 | `EventQueue` + `EventQueueManager` | `A2AEx.EventQueue` | GenServer per task, Registry for lookup |
-| `RequestHandler` | `A2AEx.RequestHandler` | Module with functions for each method |
-| `A2AServer` (net/http) | `A2AEx.Server` (Plug.Router) | Plug pipeline |
+| `RequestHandler` | `A2AEx.RequestHandler` | Struct config + dispatch tables |
+| `A2AServer` (net/http) | `A2AEx.Server` (`@behaviour Plug`) | Manual routing via `{method, path_info}` |
 | `JSONRPCHandler` | `A2AEx.JSONRPC` | JSON-RPC 2.0 encode/decode |
 | `Client` + `Transport` | `A2AEx.Client` | Req-based HTTP client |
 | ADK Executor wrapper | `A2AEx.ADKExecutor` | Wraps ADK.Runner as AgentExecutor |
@@ -141,7 +143,7 @@ Key interfaces:
 | `AgentCard` | `A2AEx.AgentCard` | Struct + JSON serialization |
 | `RemoteAgent` (ADK agent) | `A2AEx.RemoteAgent` | ADK agent backed by A2A client |
 | `PushNotificationSender` | `A2AEx.PushSender` | Req-based webhook delivery |
-| `PushNotificationConfigStore` | `A2AEx.PushConfigStore` behaviour | InMemory impl |
+| `PushNotificationConfigStore` | `A2AEx.PushConfigStore` behaviour | InMemory impl (GenServer + ETS) |
 
 ---
 
@@ -243,14 +245,16 @@ Key interfaces:
 | `A2AEx.TaskStore` behaviour + InMemory | Done | 9 | 2 |
 | `A2AEx.EventQueue` | Done | 16 | 2 |
 | `A2AEx.AgentExecutor` + `RequestContext` | Done | 6 | 2 |
-| `A2AEx.RequestHandler` | Planned | — | 3 |
-| `A2AEx.Server` (Plug.Router) | Planned | — | 3 |
+| `A2AEx.PushConfigStore` behaviour + InMemory | Done | 11 | 3 |
+| `A2AEx.PushSender` behaviour + HTTP | Done | — | 3 |
+| `A2AEx.RequestHandler` | Done | 27 | 3 |
+| `A2AEx.Server` (@behaviour Plug) | Done | 10 | 3 |
 | `A2AEx.ADKExecutor` | Planned | — | 4 |
 | `A2AEx.Converter` | Planned | — | 4 |
 | `A2AEx.RemoteAgent` | Planned | — | 4 |
 | `A2AEx.Client` | Planned | — | 5 |
 
-**Total: 114 tests, credo clean, dialyzer clean.**
+**Total: 158 tests, credo clean, dialyzer clean.**
 
 ---
 
@@ -258,20 +262,22 @@ Key interfaces:
 
 | Decision | Rationale | Status |
 |----------|-----------|--------|
-|----------|-----------|
 | Separate package from ADK | ADK is transport-agnostic; A2A adds HTTP/Plug deps | Done |
-| Plug (not Phoenix) for server | Lightweight, composable, no full framework needed | Planned |
-| Req for HTTP client | Same as ADK, modern Elixir HTTP client | Planned |
-| GenServer + ETS for TaskStore | Serialized writes, concurrent reads (same as ADK sessions) | Planned |
-| Process per EventQueue | Natural backpressure, automatic cleanup on disconnect | Planned |
-| Registry for EventQueue lookup | Built-in Elixir process registry, no external deps | Planned |
-| Behaviours for AgentExecutor/TaskStore | Pluggable implementations (in-memory, database, custom) | Planned |
+| `@behaviour Plug` (not Plug.Router) for server | Plug.Router's generated `call/2` conflicts with custom overrides; manual routing via `{method, path_info}` is cleaner | Done |
+| Req for HTTP client | Same as ADK, modern Elixir HTTP client | Done (PushSender) |
+| GenServer + ETS for TaskStore | Serialized writes, concurrent reads (same as ADK sessions) | Done |
+| Process per EventQueue | Natural backpressure, automatic cleanup on disconnect | Done |
+| Registry for EventQueue lookup | Built-in Elixir process registry, no external deps | Done |
+| Behaviours for AgentExecutor/TaskStore/PushConfigStore | Pluggable implementations (in-memory, database, custom) | Done |
 | ADKExecutor wraps ADK.Runner | Bridge between ADK's Stream-based execution and A2A's event-queue model | Planned |
 | JSON-RPC as separate module | Reusable encode/decode, clean separation from business logic | Done |
 | Struct-based types | Consistent with ADK, dialyzer-friendly | Done |
 | Custom Jason.Encoder (not @derive) | Need camelCase keys + `kind` discriminator in JSON output | Done |
 | `from_map/1` for decoding | JSON-decoded maps have string camelCase keys; struct fields are snake_case atoms | Done |
 | UUID v4 via `:crypto` | No external UUID dependency needed | Done |
+| Dispatch tables + `apply/3` for RequestHandler | Reduces cyclomatic complexity vs large case statement; module attribute maps for method routing | Done |
+| `{module, server}` tuple for store references | Pluggable store implementations at runtime without GenServer overhead in handler | Done |
+| Spawned process for executor | try/rescue isolation, enqueues failed status on crash, always closes EventQueue in after block | Done |
 
 ---
 
@@ -280,7 +286,7 @@ Key interfaces:
 - **Elixir version**: >= 1.17
 - **OTP version**: >= 26
 - **Dependencies**: adk, plug, jason, req (runtime); ex_doc, dialyxir, credo (dev)
-- **No Phoenix**: Use Plug.Router directly
+- **No Phoenix**: Use `@behaviour Plug` directly — keep dependencies minimal
 - **No WebSocket**: A2A uses SSE for streaming, not WebSocket
 - **ADK dependency**: Pull from GitHub (github.com/JohnSmall/adk)
 
