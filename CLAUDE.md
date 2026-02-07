@@ -9,7 +9,7 @@ Elixir implementation of the Agent-to-Agent (A2A) protocol. Exposes ADK agents a
 ```bash
 cd /workspace/a2a_ex
 mix deps.get
-mix test          # Run tests (158 passing)
+mix test          # Run tests (191 passing)
 mix credo         # Static analysis (0 issues)
 mix dialyzer      # Type checking (0 errors)
 ```
@@ -30,7 +30,7 @@ mix dialyzer      # Type checking (0 errors)
 
 ## Current Status
 
-**Phase 3 COMPLETE (158 tests, credo clean, dialyzer clean). Ready for Phase 4 (ADK Integration / Bridge).**
+**Phase 4 COMPLETE (191 tests, credo clean, dialyzer clean). Ready for Phase 5 (Client / RemoteAgent).**
 
 See `docs/implementation-plan.md` for the full 6-phase plan.
 
@@ -41,6 +41,8 @@ A2AEx.Server (@behaviour Plug)
     → A2AEx.JSONRPC (parse/encode)
         → A2AEx.RequestHandler (dispatch tables + apply/3 for 10 methods)
             → A2AEx.AgentExecutor behaviour (execute/cancel)
+            → {A2AEx.ADKExecutor, config} — bridges ADK.Runner into A2A
+                → A2AEx.Converter (ADK ↔ A2A type conversion)
             → A2AEx.TaskStore behaviour (CRUD tasks)
             → A2AEx.EventQueue (SSE delivery)
             → A2AEx.PushConfigStore behaviour (webhook config)
@@ -85,12 +87,17 @@ A2AEx.Server (@behaviour Plug)
 | `A2AEx.RequestHandler` | `request_handler.ex` | Struct config + dispatch tables for all 10 methods |
 | `A2AEx.Server` | `server.ex` | `@behaviour Plug` — agent card + JSON-RPC sync + SSE streaming |
 
-#### Phase 4+ (Planned)
+#### Phase 4 (Done — 33 new tests, 191 total)
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.Converter` | `converter.ex` | Pure ADK ↔ A2A type conversion (parts, content/messages, terminal state) |
+| `A2AEx.ADKExecutor.Config` | `adk_executor.ex` | Config struct (runner, app_name) for ADK executor |
+| `A2AEx.ADKExecutor` | `adk_executor.ex` | Bridges ADK.Runner into A2A — used as `{ADKExecutor, config}` tuple |
+
+#### Phase 5+ (Planned)
 | Module | Purpose | Phase |
 |--------|---------|-------|
-| `A2AEx.ADKExecutor` | Wraps ADK.Runner as AgentExecutor | 4 |
-| `A2AEx.Converter` | ADK ↔ A2A type conversion (parts, events, messages) | 4 |
-| `A2AEx.RemoteAgent` | ADK agent backed by A2A client | 4 |
+| `A2AEx.RemoteAgent` | ADK agent backed by A2A client | 5 |
 | `A2AEx.Client` | HTTP client for remote A2A agents | 5 |
 
 ## Key Patterns
@@ -106,6 +113,7 @@ push_config_store: {A2AEx.PushConfigStore.InMemory, push_store_pid}
 ### RequestHandler Config
 
 ```elixir
+# With a bare executor module (implements AgentExecutor behaviour):
 %A2AEx.RequestHandler{
   executor: MyExecutor,                              # AgentExecutor module
   task_store: {A2AEx.TaskStore.InMemory, store_pid}, # Required
@@ -113,6 +121,13 @@ push_config_store: {A2AEx.PushConfigStore.InMemory, push_store_pid}
   push_config_store: {PushConfigStore.InMemory, pid}, # Optional
   push_sender: A2AEx.PushSender.HTTP,                # Optional
   extended_card: %A2AEx.AgentCard{...}               # Optional
+}
+
+# With ADKExecutor (wraps ADK.Runner — 3-arity via {module, config} tuple):
+config = %A2AEx.ADKExecutor.Config{runner: runner, app_name: "my-app"}
+%A2AEx.RequestHandler{
+  executor: {A2AEx.ADKExecutor, config},
+  task_store: {A2AEx.TaskStore.InMemory, store_pid}
 }
 ```
 

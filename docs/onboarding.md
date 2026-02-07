@@ -22,7 +22,7 @@ A2AEx provides:
 
 ## 2. Current Status
 
-**Phase 3 COMPLETE — 158 tests, credo clean, dialyzer clean. Ready for Phase 4.**
+**Phase 4 COMPLETE — 191 tests, credo clean, dialyzer clean. Ready for Phase 5 (Client + RemoteAgent).**
 
 ### What's Built (Phase 1: Core Types + JSON-RPC — 83 tests)
 
@@ -72,13 +72,23 @@ A2AEx provides:
 | `A2AEx.RequestHandler` | `lib/a2a_ex/request_handler.ex` | Struct config + dispatch for all 10 JSON-RPC methods |
 | `A2AEx.Server` | `lib/a2a_ex/server.ex` | `@behaviour Plug` — agent card + JSON-RPC + SSE streaming |
 
-### What's Next (Phase 4: ADK Integration / Bridge)
+### What's Built (Phase 4: ADK Integration Bridge — 33 tests)
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.Converter` | `lib/a2a_ex/converter.ex` | Pure bidirectional ADK ↔ A2A type conversion (parts, content/messages, terminal state) |
+| `A2AEx.ADKExecutor.Config` | `lib/a2a_ex/adk_executor.ex` | Config struct (runner, app_name) for ADK executor |
+| `A2AEx.ADKExecutor` | `lib/a2a_ex/adk_executor.ex` | Bridges ADK.Runner into A2A protocol via `{module, config}` tuple pattern |
+
+**Key changes to existing modules:**
+- `A2AEx.RequestHandler` — Broadened `executor` type to support `{module, config}` tuples alongside bare modules. Added `call_execute/3` + `call_cancel/3` dispatch helpers.
+
+### What's Next (Phase 5: Client + RemoteAgent)
 
 | Module | Purpose |
 |--------|---------|
-| `A2AEx.ADKExecutor` | Wraps `ADK.Runner` as `A2AEx.AgentExecutor` |
-| `A2AEx.Converter` | ADK ↔ A2A type conversion (parts, events, messages) |
-| `A2AEx.RemoteAgent` | ADK agent backed by A2A client |
+| `A2AEx.Client` | HTTP client for consuming remote A2A agents |
+| `A2AEx.RemoteAgent` | ADK agent backed by A2A client (moved from Phase 4 — requires Client) |
 
 ### What's Built in ADK (Dependency)
 
@@ -206,12 +216,17 @@ ADK.Runner.run/5                   message/send or message/stream
   → escalate/transfer actions →    Task state = completed/failed
 ```
 
-Key conversion rules:
-- ADK text event → A2A Message with Text part
-- ADK blob part → A2A File part
-- ADK function_call/function_response → internal (not exposed in A2A)
-- ADK escalate action → A2A task state = `completed` or `input_required`
-- ADK final_response event → A2A task state = `completed`
+Key conversion rules (implemented in `A2AEx.Converter`):
+- ADK text Part → A2A TextPart (with thought metadata if `part.thought` is true)
+- ADK inline_data (Blob) → A2A FilePart with FileBytes (base64 encoded)
+- ADK function_call → A2A DataPart with `metadata: %{"adk_type" => "function_call"}`
+- ADK function_response → A2A DataPart with `metadata: %{"adk_type" => "function_response"}`
+- A2A FileURI → ADK text Part fallback (ADK has no FileURI type)
+- A2A DataPart (generic) → ADK text Part with JSON-encoded data
+- ADK role "user" ↔ A2A role :user; ADK role "model" ↔ A2A role :agent
+- ADK event with error_code/error_message → terminal state :failed
+- ADK event with escalate or long_running_tool_ids → terminal state :input_required
+- ADK normal event → terminal state :completed
 
 ---
 
@@ -239,7 +254,7 @@ Read these files in order when implementing each phase:
 - `/workspace/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
 - `/workspace/a2a-go/internal/sse/sse.go` — SSE writer (WriteHeaders, WriteData, WriteKeepAlive)
 
-### Phase 4: ADK Bridge (NEXT)
+### Phase 4: ADK Bridge (DONE)
 - `/workspace/adk-go/server/adka2a/executor.go` — ADK Runner → AgentExecutor wrapper
 - `/workspace/adk-go/server/adka2a/part_converter.go` — Part type conversion
 - `/workspace/adk-go/server/adka2a/event_converter.go` — Event → A2A event conversion
@@ -258,6 +273,7 @@ Read these files in order when implementing each phase:
 The `A2AEx.RequestHandler` is a struct (not a GenServer) containing pluggable configuration:
 
 ```elixir
+# With a bare executor module:
 %A2AEx.RequestHandler{
   executor: MyExecutor,                              # AgentExecutor module
   task_store: {A2AEx.TaskStore.InMemory, store_pid}, # {module, server} tuple
@@ -265,6 +281,13 @@ The `A2AEx.RequestHandler` is a struct (not a GenServer) containing pluggable co
   push_config_store: {PushConfigStore.InMemory, pid}, # Optional
   push_sender: A2AEx.PushSender.HTTP,                # Optional
   extended_card: %A2AEx.AgentCard{...}               # Optional
+}
+
+# With ADKExecutor (wraps ADK.Runner via {module, config} tuple):
+config = %A2AEx.ADKExecutor.Config{runner: runner, app_name: "my-app"}
+%A2AEx.RequestHandler{
+  executor: {A2AEx.ADKExecutor, config},
+  task_store: {A2AEx.TaskStore.InMemory, store_pid}
 }
 ```
 
@@ -360,6 +383,9 @@ mix dialyzer                # Type checking
 13. **Dialyzer strict types**: If type spec says `String.t()` but runtime value can be nil (e.g., from `from_map`), use catch-all guards: `defp f(id) when is_binary(id) and id != "", do: :ok; defp f(_), do: :error`.
 14. **Registry cleanup is async**: After `GenServer.stop`, `Process.sleep(10)` before checking Registry in tests.
 15. **Cyclomatic complexity**: Use module attribute maps + `apply/3` for dispatch instead of large case statements.
+16. **`{module, config}` executor pattern**: ADKExecutor uses 3-arity functions (`execute(config, req_ctx, task_id)`) but AgentExecutor behaviour is 2-arity. The RequestHandler dispatches via `call_execute/call_cancel` helpers with guards (`when is_atom(mod)` for bare modules, `{mod, config}` for tuples).
+17. **Converter is pure**: `A2AEx.Converter` has no state — all functions are pure. Use module attribute constants for repeated metadata keys (`@adk_type`, `@adk_thought`).
+18. **Base64 for inline_data**: ADK `Blob.data` is raw binary; A2A `FileBytes.bytes` is base64-encoded. The converter handles encoding/decoding automatically.
 
 ---
 
@@ -368,7 +394,7 @@ mix dialyzer                # Type checking
 ```bash
 cd /workspace/a2a_ex
 mix deps.get       # Fetch dependencies (including ADK from GitHub)
-mix test           # Run tests (158 passing)
+mix test           # Run tests (191 passing)
 mix credo          # Static analysis (0 issues)
 mix dialyzer       # Type checking (0 errors)
 iex -S mix         # Interactive shell

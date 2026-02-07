@@ -130,31 +130,37 @@ JSON-RPC method handlers and Plug-based HTTP server.
 
 ## Phase 4: ADK Integration (Bridge)
 
-Connect A2AEx to ADK — expose ADK agents as A2A endpoints and consume A2A agents as ADK agents.
+Connect A2AEx to ADK — expose ADK agents as A2A endpoints.
 
 ### Tasks
 
-- [ ] **A2AEx.ADKExecutor** — AgentExecutor wrapping ADK.Runner
-  - [ ] `execute/3` — Run ADK agent via Runner, convert events to A2A, enqueue
-  - [ ] `cancel/2` — Signal cancellation (if supported)
-  - [ ] Map ADK Event stream → TaskStatusUpdateEvent + TaskArtifactUpdateEvent
-  - [ ] Handle ADK state_delta → A2A task metadata
+- [x] **A2AEx.Converter** — ADK ↔ A2A type conversion (pure functions)
+  - [x] `adk_part_to_a2a/1` — ADK.Types.Part → A2AEx.Part (text, thought, inline_data, function_call, function_response)
+  - [x] `a2a_part_to_adk/1` — A2AEx.Part → ADK.Types.Part (TextPart, FilePart w/ bytes/uri, DataPart w/ metadata dispatch)
+  - [x] `adk_parts_to_a2a/1` + `a2a_parts_to_adk/1` — batch list conversion
+  - [x] `a2a_message_to_content/1` — A2AEx.Message → ADK.Types.Content (role mapping: :user→"user", :agent→"model")
+  - [x] `adk_content_to_message/1,2` — ADK.Types.Content → A2AEx.Message (role mapping + optional context_id/task_id)
+  - [x] `terminal_state/1` — ADK.Event → A2AEx.TaskState (error→:failed, escalate/long_running→:input_required, else→:completed)
 
-- [ ] **A2AEx.Converter** — ADK ↔ A2A type conversion
-  - [ ] `adk_part_to_a2a/1` — ADK.Types.Part → A2AEx.Part
-  - [ ] `a2a_part_to_adk/1` — A2AEx.Part → ADK.Types.Part
-  - [ ] `adk_event_to_status/1` — ADK.Event → TaskStatusUpdateEvent
-  - [ ] `adk_event_to_artifact/1` — ADK.Event → TaskArtifactUpdateEvent (if has artifacts)
-  - [ ] `a2a_message_to_content/1` — A2AEx.Message → ADK.Types.Content
-  - [ ] `adk_content_to_message/1` — ADK.Types.Content → A2AEx.Message
-  - [ ] Map ADK event actions (escalate, transfer) to A2A task states
+- [x] **A2AEx.RequestHandler update** — Support `{module, config}` executor tuples
+  - [x] Broadened `executor` type to `executor_ref()` = `module() | {module(), term()}`
+  - [x] `call_execute/3` + `call_cancel/3` dispatch helpers with guards
+  - [x] Backward-compatible: existing bare-module executors still work
 
-- [ ] **A2AEx.RemoteAgent** — ADK agent backed by A2A client
+- [x] **A2AEx.ADKExecutor** — Bridges ADK.Runner into A2A protocol
+  - [x] `A2AEx.ADKExecutor.Config` struct (runner, app_name)
+  - [x] `execute/3` — Convert A2A message → ADK Content, run agent via Runner, stream events
+  - [x] Emit working status → artifact events (with append tracking) → last_chunk → final status
+  - [x] `cancel/3` — Enqueue :canceled status with final: true
+  - [x] Terminal state detection: error→:failed, escalate/long_running→:input_required
+
+- [ ] **A2AEx.RemoteAgent** — ADK agent backed by A2A client *(deferred to Phase 5 — requires Client)*
   - [ ] `@behaviour ADK.Agent`
   - [ ] `run/2` — Send message via A2AEx.Client, convert response to ADK Events
-  - [ ] Support streaming (SSE → ADK Event stream)
 
-- [ ] **Tests** — Converter round-trip, ADKExecutor with mock agent, RemoteAgent with mock server
+- [x] **Tests** — 33 new tests (23 converter + 10 executor), 191 total
+  - [x] Converter: part conversion round-trip (all 5 part types both directions), message/content conversion, terminal state
+  - [x] ADKExecutor: text response flow, multi-event append, error/escalation states, cancel, last_chunk, integration via RequestHandler
 
 ### Reference Files
 - `/workspace/adk-go/server/adka2a/executor.go` — ADK Executor wrapper
@@ -163,9 +169,9 @@ Connect A2AEx to ADK — expose ADK agents as A2A endpoints and consume A2A agen
 
 ---
 
-## Phase 5: Client
+## Phase 5: Client + RemoteAgent
 
-HTTP client for consuming remote A2A agents.
+HTTP client for consuming remote A2A agents, and RemoteAgent (ADK agent backed by A2A client).
 
 ### Tasks
 
@@ -180,7 +186,12 @@ HTTP client for consuming remote A2A agents.
   - [ ] SSE parsing (Server-Sent Events line protocol)
   - [ ] Configurable base URL, timeout, headers
 
-- [ ] **Tests** — Client with mock HTTP (Req test adapter or Plug.Test)
+- [ ] **A2AEx.RemoteAgent** — ADK agent backed by A2A client *(moved from Phase 4)*
+  - [ ] `@behaviour ADK.Agent`
+  - [ ] `run/2` — Send message via A2AEx.Client, convert response to ADK Events
+  - [ ] Support streaming (SSE → ADK Event stream)
+
+- [ ] **Tests** — Client with mock HTTP (Req test adapter or Plug.Test), RemoteAgent with mock server
 
 ### Reference Files
 - `/workspace/a2a-go/a2aclient/client.go` — Client implementation
@@ -223,9 +234,9 @@ Phase 2: TaskStore + EventQueue   (storage + delivery)
     ↓
 Phase 3: RequestHandler + Server  (HTTP endpoint)
     ↓
-Phase 4: ADK Integration          (bridge ADK ↔ A2A)
+Phase 4: ADK Integration          (bridge ADK → A2A: Converter + ADKExecutor)
     ↓
-Phase 5: Client                   (consume remote agents)
+Phase 5: Client + RemoteAgent    (consume remote agents, bridge A2A → ADK)
     ↓
 Phase 6: Integration + Polish     (end-to-end)
 ```

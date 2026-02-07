@@ -19,8 +19,10 @@ defmodule A2AEx.RequestHandler do
 
   @type store_ref :: {module(), GenServer.server()}
 
+  @type executor_ref :: module() | {module(), term()}
+
   @type t :: %__MODULE__{
-          executor: module(),
+          executor: executor_ref(),
           task_store: store_ref(),
           agent_card: A2AEx.AgentCard.t() | nil,
           push_config_store: store_ref() | nil,
@@ -185,7 +187,7 @@ defmodule A2AEx.RequestHandler do
       task: task
     }
 
-    case handler.executor.cancel(req_ctx, id_params.id) do
+    case call_cancel(handler.executor, req_ctx, id_params.id) do
       :ok ->
         canceled_task = %{
           task
@@ -390,7 +392,7 @@ defmodule A2AEx.RequestHandler do
   defp spawn_executor(handler, req_ctx, task_id) do
     spawn(fn ->
       try do
-        handler.executor.execute(req_ctx, task_id)
+        call_execute(handler.executor, req_ctx, task_id)
       rescue
         e -> enqueue_error_event(task_id, req_ctx.context_id, Exception.message(e))
       after
@@ -398,6 +400,12 @@ defmodule A2AEx.RequestHandler do
       end
     end)
   end
+
+  defp call_execute({mod, config}, req_ctx, task_id), do: mod.execute(config, req_ctx, task_id)
+  defp call_execute(mod, req_ctx, task_id) when is_atom(mod), do: mod.execute(req_ctx, task_id)
+
+  defp call_cancel({mod, config}, req_ctx, task_id), do: mod.cancel(config, req_ctx, task_id)
+  defp call_cancel(mod, req_ctx, task_id) when is_atom(mod), do: mod.cancel(req_ctx, task_id)
 
   defp enqueue_error_event(task_id, context_id, message) do
     error_msg = A2AEx.Message.new(:agent, [%A2AEx.TextPart{text: "execution failed: #{message}"}])

@@ -2,9 +2,9 @@
 
 ## Document Info
 - **Project**: A2AEx - Elixir implementation of the A2A protocol
-- **Version**: 0.3.0
+- **Version**: 0.4.0
 - **Date**: 2026-02-07
-- **Status**: Phase 3 complete (RequestHandler + Server). Ready for Phase 4.
+- **Status**: Phase 4 complete (ADK Integration Bridge). Ready for Phase 5 (Client / RemoteAgent).
 - **GitHub**: github.com/JohnSmall/a2a_ex
 - **Depends on**: ADK (github.com/JohnSmall/adk)
 
@@ -249,12 +249,12 @@ Key interfaces:
 | `A2AEx.PushSender` behaviour + HTTP | Done | — | 3 |
 | `A2AEx.RequestHandler` | Done | 27 | 3 |
 | `A2AEx.Server` (@behaviour Plug) | Done | 10 | 3 |
-| `A2AEx.ADKExecutor` | Planned | — | 4 |
-| `A2AEx.Converter` | Planned | — | 4 |
-| `A2AEx.RemoteAgent` | Planned | — | 4 |
+| `A2AEx.Converter` | Done | 23 | 4 |
+| `A2AEx.ADKExecutor` + `ADKExecutor.Config` | Done | 10 | 4 |
+| `A2AEx.RemoteAgent` | Planned | — | 5 |
 | `A2AEx.Client` | Planned | — | 5 |
 
-**Total: 158 tests, credo clean, dialyzer clean.**
+**Total: 191 tests, credo clean, dialyzer clean.**
 
 ---
 
@@ -269,7 +269,8 @@ Key interfaces:
 | Process per EventQueue | Natural backpressure, automatic cleanup on disconnect | Done |
 | Registry for EventQueue lookup | Built-in Elixir process registry, no external deps | Done |
 | Behaviours for AgentExecutor/TaskStore/PushConfigStore | Pluggable implementations (in-memory, database, custom) | Done |
-| ADKExecutor wraps ADK.Runner | Bridge between ADK's Stream-based execution and A2A's event-queue model | Planned |
+| ADKExecutor wraps ADK.Runner | Bridge via `{module, config}` tuple pattern — 3-arity execute/cancel without changing AgentExecutor behaviour | Done |
+| `{module, config}` executor dispatch | RequestHandler uses `call_execute/call_cancel` helpers with guards to support both bare modules and tuple executors | Done |
 | JSON-RPC as separate module | Reusable encode/decode, clean separation from business logic | Done |
 | Struct-based types | Consistent with ADK, dialyzer-friendly | Done |
 | Custom Jason.Encoder (not @derive) | Need camelCase keys + `kind` discriminator in JSON output | Done |
