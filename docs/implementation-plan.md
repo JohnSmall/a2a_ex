@@ -37,9 +37,14 @@ Foundation types and JSON-RPC encode/decode layer.
 
 - [x] **Tests** — 83 tests: types serialization round-trip, JSON-RPC encode/decode, error codes
 
-### Reference Files
-- `/workspace/a2a-go/a2a.go` — All type definitions
-- `/workspace/a2a-go/jsonrpc.go` — JSON-RPC types and error codes
+### Reference Files (Read During Phase 1)
+- `/workspace/a2a-go/a2a/core.go` — Core types (Task, Message, Part, Artifact, events, params)
+- `/workspace/a2a-go/a2a/agent.go` — AgentCard, AgentCapabilities, AgentSkill, AgentProvider
+- `/workspace/a2a-go/a2a/push.go` — Push notification types (PushConfig, PushAuthInfo, param types)
+- `/workspace/a2a-go/a2a/auth.go` — Security scheme types (OpenAPI 3.0 style)
+- `/workspace/a2a-go/a2a/errors.go` — Error sentinel values
+- `/workspace/a2a-go/internal/jsonrpc/jsonrpc.go` — Error codes, method names, error conversion
+- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSON-RPC request/response structs, handler dispatch
 
 ---
 
@@ -73,9 +78,9 @@ Storage and execution behaviours with in-memory implementations.
 - [ ] **Tests** — TaskStore CRUD, EventQueue pub/sub, AgentExecutor mock
 
 ### Reference Files
-- `/workspace/a2a-go/server/task_store.go` — TaskStore interface + InMemoryTaskStore
-- `/workspace/a2a-go/server/event_queue.go` — EventQueue + EventQueueManager
-- `/workspace/a2a-go/server/server.go` — AgentExecutor interface
+- `/workspace/a2a-go/a2asrv/tasks.go` — TaskStore interface
+- `/workspace/a2a-go/a2asrv/eventqueue/` — EventQueue, Manager, InMemory implementations
+- `/workspace/a2a-go/a2asrv/agentexec.go` — AgentExecutor interface
 
 ---
 
@@ -115,8 +120,9 @@ JSON-RPC method handlers and Plug-based HTTP server.
 - [ ] **Tests** — RequestHandler unit tests (mock executor), Server integration tests (Plug.Test)
 
 ### Reference Files
-- `/workspace/a2a-go/server/server.go` — A2AServer + handlers
-- `/workspace/a2a-go/server/request_handler.go` — RequestHandler implementation
+- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch
+- `/workspace/a2a-go/a2asrv/handler.go` — RequestHandler interface + implementation
+- `/workspace/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
 
 ---
 
@@ -175,8 +181,9 @@ HTTP client for consuming remote A2A agents.
 - [ ] **Tests** — Client with mock HTTP (Req test adapter or Plug.Test)
 
 ### Reference Files
-- `/workspace/a2a-go/client/client.go` — Client implementation
-- `/workspace/a2a-go/client/transport.go` — Transport interface
+- `/workspace/a2a-go/a2aclient/client.go` — Client implementation
+- `/workspace/a2a-go/a2aclient/transport.go` — HTTP transport
+- `/workspace/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
 
 ---
 

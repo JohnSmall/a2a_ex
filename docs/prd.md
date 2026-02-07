@@ -2,9 +2,9 @@
 
 ## Document Info
 - **Project**: A2AEx - Elixir implementation of the A2A protocol
-- **Version**: 0.1.0
+- **Version**: 0.2.0
 - **Date**: 2026-02-07
-- **Status**: Scaffolded, ready for Phase 1 implementation
+- **Status**: Phase 1 complete (Core Types + JSON-RPC). Ready for Phase 2.
 - **GitHub**: github.com/JohnSmall/a2a_ex
 - **Depends on**: ADK (github.com/JohnSmall/adk)
 
@@ -147,62 +147,72 @@ Key interfaces:
 
 ## 5. Data Types
 
-### 5.1 A2A Protocol Types
+### 5.1 A2A Protocol Types (Implemented in Phase 1)
 
 ```elixir
-# Task — the core work unit
-%A2AEx.Task{
-  id: String.t(),
-  context_id: String.t(),       # groups related tasks
-  status: TaskStatus.t(),
-  artifacts: [Artifact.t()],
-  metadata: map()
-}
+# Part — tagged union (3 types)
+%A2AEx.TextPart{text: String.t(), metadata: map() | nil}
+%A2AEx.FilePart{file: FileBytes.t() | FileURI.t(), metadata: map() | nil}
+%A2AEx.DataPart{data: map(), metadata: map() | nil}
 
-# TaskStatus — current state
-%A2AEx.TaskStatus{
-  state: :submitted | :working | :input_required | :completed | :failed | :canceled,
-  message: Message.t() | nil,
-  timestamp: DateTime.t()
-}
+# File content — two variants
+%A2AEx.FileBytes{bytes: String.t(), name: String.t() | nil, mime_type: String.t() | nil}
+%A2AEx.FileURI{uri: String.t(), name: String.t() | nil, mime_type: String.t() | nil}
 
 # Message — communication unit
 %A2AEx.Message{
-  role: :user | :agent,
-  parts: [Part.t()],
-  metadata: map()
+  id: String.t(), role: :user | :agent, parts: [Part.t()],
+  context_id: String.t() | nil, task_id: String.t() | nil,
+  reference_task_ids: [String.t()] | nil, extensions: [String.t()] | nil,
+  metadata: map() | nil
 }
 
-# Part — tagged union
-%A2AEx.Part.Text{text: String.t()}
-%A2AEx.Part.File{file: FileContent.t()}
-%A2AEx.Part.Data{data: map()}
+# Task — the core work unit
+%A2AEx.Task{
+  id: String.t(), context_id: String.t(), status: TaskStatus.t(),
+  artifacts: [Artifact.t()] | nil, history: [Message.t()] | nil,
+  metadata: map() | nil
+}
+
+# TaskStatus — current state (10 states: submitted, working, input_required,
+#   completed, failed, canceled, rejected, auth_required, unknown + unspecified)
+%A2AEx.TaskStatus{state: TaskState.t(), message: Message.t() | nil, timestamp: DateTime.t() | nil}
 
 # Artifact — output produced by agent
 %A2AEx.Artifact{
-  artifact_id: String.t(),
-  name: String.t() | nil,
-  description: String.t() | nil,
-  parts: [Part.t()],
-  metadata: map()
+  id: String.t(), name: String.t() | nil, description: String.t() | nil,
+  parts: [Part.t()], extensions: [String.t()] | nil, metadata: map() | nil
 }
+
+# Events — streaming updates
+%A2AEx.TaskStatusUpdateEvent{task_id, context_id, status, final: boolean(), metadata}
+%A2AEx.TaskArtifactUpdateEvent{task_id, context_id, artifact, append: boolean(), last_chunk: boolean(), metadata}
 
 # AgentCard — agent metadata
 %A2AEx.AgentCard{
-  name: String.t(),
-  description: String.t(),
-  url: String.t(),
-  version: String.t(),
-  capabilities: Capabilities.t(),
-  skills: [Skill.t()],
-  default_input_modes: [String.t()],
-  default_output_modes: [String.t()]
+  name, description, url, version, protocol_version: "0.3.0",
+  capabilities: AgentCapabilities.t(), skills: [AgentSkill.t()],
+  default_input_modes: [String.t()], default_output_modes: [String.t()],
+  provider: AgentProvider.t() | nil, documentation_url, icon_url,
+  supports_authenticated_extended_card: boolean()
 }
 
-# JSON-RPC
-%A2AEx.JSONRPC.Request{jsonrpc: "2.0", method: String.t(), params: map(), id: term()}
-%A2AEx.JSONRPC.Response{jsonrpc: "2.0", result: term(), id: term()}
-%A2AEx.JSONRPC.Error{jsonrpc: "2.0", error: %{code: integer(), message: String.t()}, id: term()}
+# Request params
+%A2AEx.TaskIDParams{id, metadata}
+%A2AEx.TaskQueryParams{id, history_length, metadata}
+%A2AEx.MessageSendParams{message: Message.t(), config: MessageSendConfig.t() | nil, metadata}
+%A2AEx.MessageSendConfig{accepted_output_modes, blocking, history_length, push_notification_config}
+
+# Push notification
+%A2AEx.PushConfig{url, id, token, authentication: PushAuthInfo.t() | nil}
+%A2AEx.PushAuthInfo{schemes: [String.t()], credentials: String.t() | nil}
+%A2AEx.TaskPushConfig{task_id, push_notification_config: PushConfig.t()}
+
+# Error — 15 error types with JSON-RPC error code mapping
+%A2AEx.Error{type: error_type(), message: String.t(), details: map() | nil}
+
+# JSON-RPC — maps (not structs), encode/decode functions
+# A2AEx.JSONRPC.decode_request/1, encode_response/2, encode_error/2, error_code/1, etc.
 ```
 
 ### 5.2 SSE Event Types
@@ -214,24 +224,58 @@ Key interfaces:
 
 ---
 
-## 6. Key Design Decisions
+## 6. Component Status
 
-| Decision | Rationale |
-|----------|-----------|
-| Separate package from ADK | ADK is transport-agnostic; A2A adds HTTP/Plug deps |
-| Plug (not Phoenix) for server | Lightweight, composable, no full framework needed |
-| Req for HTTP client | Same as ADK, modern Elixir HTTP client |
-| GenServer + ETS for TaskStore | Serialized writes, concurrent reads (same as ADK sessions) |
-| Process per EventQueue | Natural backpressure, automatic cleanup on disconnect |
-| Registry for EventQueue lookup | Built-in Elixir process registry, no external deps |
-| Behaviours for AgentExecutor/TaskStore | Pluggable implementations (in-memory, database, custom) |
-| ADKExecutor wraps ADK.Runner | Bridge between ADK's Stream-based execution and A2A's event-queue model |
-| JSON-RPC as separate module | Reusable encode/decode, clean separation from business logic |
-| Struct-based types | Consistent with ADK, dialyzer-friendly |
+| Component | Status | Tests | Phase |
+|-----------|--------|-------|-------|
+| `A2AEx.TextPart` / `FilePart` / `DataPart` | Done | 16 | 1 |
+| `A2AEx.Message` | Done | 5 | 1 |
+| `A2AEx.Task` / `TaskStatus` / `TaskState` | Done | 8 | 1 |
+| `A2AEx.Artifact` | Done | 2 | 1 |
+| `A2AEx.TaskStatusUpdateEvent` / `TaskArtifactUpdateEvent` | Done | 7 | 1 |
+| `A2AEx.Event` (union decoder) | Done | 3 | 1 |
+| `A2AEx.AgentCard` / `AgentCapabilities` / `AgentSkill` | Done | 9 | 1 |
+| `A2AEx.Error` | Done | — | 1 |
+| `A2AEx.JSONRPC` | Done | 27 | 1 |
+| `A2AEx.Params` (TaskIDParams, etc.) | Done | — | 1 |
+| `A2AEx.Push` (PushConfig, etc.) | Done | — | 1 |
+| `A2AEx.ID` (UUID v4) | Done | 2 | 1 |
+| `A2AEx.TaskStore` behaviour + InMemory | Planned | — | 2 |
+| `A2AEx.EventQueue` | Planned | — | 2 |
+| `A2AEx.AgentExecutor` behaviour | Planned | — | 2 |
+| `A2AEx.RequestHandler` | Planned | — | 3 |
+| `A2AEx.Server` (Plug.Router) | Planned | — | 3 |
+| `A2AEx.ADKExecutor` | Planned | — | 4 |
+| `A2AEx.Converter` | Planned | — | 4 |
+| `A2AEx.RemoteAgent` | Planned | — | 4 |
+| `A2AEx.Client` | Planned | — | 5 |
+
+**Total: 83 tests, credo clean, dialyzer clean.**
 
 ---
 
-## 7. Technical Constraints
+## 7. Key Design Decisions
+
+| Decision | Rationale | Status |
+|----------|-----------|--------|
+|----------|-----------|
+| Separate package from ADK | ADK is transport-agnostic; A2A adds HTTP/Plug deps | Done |
+| Plug (not Phoenix) for server | Lightweight, composable, no full framework needed | Planned |
+| Req for HTTP client | Same as ADK, modern Elixir HTTP client | Planned |
+| GenServer + ETS for TaskStore | Serialized writes, concurrent reads (same as ADK sessions) | Planned |
+| Process per EventQueue | Natural backpressure, automatic cleanup on disconnect | Planned |
+| Registry for EventQueue lookup | Built-in Elixir process registry, no external deps | Planned |
+| Behaviours for AgentExecutor/TaskStore | Pluggable implementations (in-memory, database, custom) | Planned |
+| ADKExecutor wraps ADK.Runner | Bridge between ADK's Stream-based execution and A2A's event-queue model | Planned |
+| JSON-RPC as separate module | Reusable encode/decode, clean separation from business logic | Done |
+| Struct-based types | Consistent with ADK, dialyzer-friendly | Done |
+| Custom Jason.Encoder (not @derive) | Need camelCase keys + `kind` discriminator in JSON output | Done |
+| `from_map/1` for decoding | JSON-decoded maps have string camelCase keys; struct fields are snake_case atoms | Done |
+| UUID v4 via `:crypto` | No external UUID dependency needed | Done |
+
+---
+
+## 8. Technical Constraints
 
 - **Elixir version**: >= 1.17
 - **OTP version**: >= 26
@@ -242,7 +286,7 @@ Key interfaces:
 
 ---
 
-## 8. Success Criteria
+## 9. Success Criteria
 
 1. Server exposes ADK agent via A2A protocol (all 10 methods)
 2. Client can call remote A2A agents

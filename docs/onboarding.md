@@ -22,14 +22,34 @@ A2AEx provides:
 
 ## 2. Current Status
 
-**Scaffolded — ready for Phase 1 implementation.**
+**Phase 1 COMPLETE — 83 tests, credo clean, dialyzer clean. Ready for Phase 2.**
 
-The project skeleton exists at `/workspace/a2a_ex/` with:
-- `mix.exs` with dependencies (adk from GitHub, plug, jason, req)
-- OTP Application module
-- Root `A2AEx` module
-- 1 smoke test passing
-- Git repo initialized
+### What's Built (Phase 1: Core Types + JSON-RPC)
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.TextPart` / `FilePart` / `DataPart` | `lib/a2a_ex/part.ex` | Content part union types |
+| `A2AEx.FileBytes` / `FileURI` | `lib/a2a_ex/part.ex` | File content variants |
+| `A2AEx.Part` | `lib/a2a_ex/part.ex` | Part union: `from_map/1`, `to_map/1`, `from_map_list/1` |
+| `A2AEx.Message` | `lib/a2a_ex/message.ex` | Messages with role, parts, IDs |
+| `A2AEx.TaskState` | `lib/a2a_ex/task.ex` | 10 task states + `terminal?/1` |
+| `A2AEx.TaskStatus` | `lib/a2a_ex/task.ex` | State + message + timestamp |
+| `A2AEx.Task` | `lib/a2a_ex/task.ex` | Core work unit + `new_submitted/1` |
+| `A2AEx.Artifact` | `lib/a2a_ex/artifact.ex` | Agent output artifacts |
+| `A2AEx.TaskStatusUpdateEvent` | `lib/a2a_ex/event.ex` | Task state change event |
+| `A2AEx.TaskArtifactUpdateEvent` | `lib/a2a_ex/event.ex` | Artifact update event |
+| `A2AEx.Event` | `lib/a2a_ex/event.ex` | Event union decoder (`from_map/1`) |
+| `A2AEx.AgentCard` | `lib/a2a_ex/agent_card.ex` | Agent metadata manifest |
+| `A2AEx.AgentCapabilities` | `lib/a2a_ex/agent_card.ex` | Streaming, push, history flags |
+| `A2AEx.AgentSkill` | `lib/a2a_ex/agent_card.ex` | Skill definition |
+| `A2AEx.AgentProvider` | `lib/a2a_ex/agent_card.ex` | Provider info |
+| `A2AEx.TaskIDParams` / `TaskQueryParams` | `lib/a2a_ex/params.ex` | Request parameter types |
+| `A2AEx.MessageSendParams` / `MessageSendConfig` | `lib/a2a_ex/params.ex` | Send request params |
+| `A2AEx.PushConfig` / `PushAuthInfo` / `TaskPushConfig` | `lib/a2a_ex/push.ex` | Push notification config |
+| `A2AEx.GetTaskPushConfigParams` + 2 more | `lib/a2a_ex/push.ex` | Push config request params |
+| `A2AEx.Error` | `lib/a2a_ex/error.ex` | 15 error types with messages |
+| `A2AEx.JSONRPC` | `lib/a2a_ex/jsonrpc.ex` | JSON-RPC 2.0 encode/decode |
+| `A2AEx.ID` | `lib/a2a_ex/id.ex` | UUID v4 generation |
 
 ### What's Built in ADK (Dependency)
 
@@ -157,18 +177,24 @@ Key conversion rules:
 
 Read these files in order when implementing each phase:
 
-### Phase 1: Types + JSON-RPC
-- `/workspace/a2a-go/a2a.go` — All type definitions (Task, Message, Part, AgentCard, etc.)
-- `/workspace/a2a-go/jsonrpc.go` — JSON-RPC request/response/error types + error codes
+### Phase 1: Types + JSON-RPC (DONE)
+- `/workspace/a2a-go/a2a/core.go` — Core types (Task, Message, Part, Artifact, events, params)
+- `/workspace/a2a-go/a2a/agent.go` — AgentCard, AgentCapabilities, AgentSkill, AgentProvider
+- `/workspace/a2a-go/a2a/push.go` — Push notification types
+- `/workspace/a2a-go/a2a/auth.go` — Security scheme types
+- `/workspace/a2a-go/a2a/errors.go` — Error sentinel values
+- `/workspace/a2a-go/internal/jsonrpc/jsonrpc.go` — Error codes, method names
+- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSON-RPC handler, request/response structs
 
 ### Phase 2: Storage + Execution
-- `/workspace/a2a-go/server/task_store.go` — TaskStore interface + InMemoryTaskStore
-- `/workspace/a2a-go/server/event_queue.go` — EventQueue + EventQueueManager
-- `/workspace/a2a-go/server/server.go` — AgentExecutor interface
+- `/workspace/a2a-go/a2asrv/tasks.go` — TaskStore interface
+- `/workspace/a2a-go/a2asrv/eventqueue/` — EventQueue, Manager, InMemory implementations
+- `/workspace/a2a-go/a2asrv/agentexec.go` — AgentExecutor interface
 
 ### Phase 3: Server
-- `/workspace/a2a-go/server/server.go` — A2AServer struct + HTTP handler setup
-- `/workspace/a2a-go/server/request_handler.go` — All 10 method handlers
+- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch
+- `/workspace/a2a-go/a2asrv/handler.go` — RequestHandler interface + implementation
+- `/workspace/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
 
 ### Phase 4: ADK Bridge
 - `/workspace/adk-go/server/adka2a/executor.go` — ADK Runner → AgentExecutor wrapper
@@ -176,8 +202,9 @@ Read these files in order when implementing each phase:
 - `/workspace/adk-go/server/adka2a/event_converter.go` — Event → A2A event conversion
 
 ### Phase 5: Client
-- `/workspace/a2a-go/client/client.go` — Client implementation
-- `/workspace/a2a-go/client/transport.go` — HTTP transport
+- `/workspace/a2a-go/a2aclient/client.go` — Client implementation
+- `/workspace/a2a-go/a2aclient/transport.go` — HTTP transport
+- `/workspace/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
 
 ---
 
@@ -200,12 +227,16 @@ mix dialyzer                # Type checking
 - Tests: Mirror `lib/` structure under `test/`; use `async: true`
 - Verify: `mix test && mix credo && mix dialyzer`
 
-### Gotchas (from ADK experience)
-1. **Compile order**: Define nested/referenced modules BEFORE parent modules
+### Gotchas (from ADK + A2AEx experience)
+1. **Compile order**: Define nested/referenced modules BEFORE parent modules in the same file
 2. **Avoid MapSet**: Use `%{key => true}` maps (dialyzer opaque type issues)
 3. **Credo nesting**: Max depth 2 — extract helpers
 4. **Test module names**: Use unique names to avoid cross-file collisions
 5. **Behaviour dispatch**: No module functions on behaviour modules — call implementing module directly
+6. **defstruct ordering**: Keyword defaults MUST come last — `[:a, :b, c: default]` not `[:a, c: default, :b]`
+7. **JSON camelCase**: A2A protocol uses camelCase JSON keys (e.g., `contextId`, `taskId`, `messageId`). Elixir structs use snake_case atoms. Implement custom `Jason.Encoder` + `from_map/1` for conversion.
+8. **Kind discriminator**: All A2A events/parts/tasks use a `"kind"` field in JSON for polymorphic decode. Always include it in `to_map/1` output.
+9. **Go SDK restructured**: The A2A Go SDK moved from flat files to packages: `a2a/` (types), `a2asrv/` (server), `a2aclient/` (client). Check actual file locations before reading.
 
 ---
 

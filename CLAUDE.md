@@ -45,12 +45,29 @@ A2AEx.Server (Plug.Router)
             → A2AEx.EventQueue (SSE delivery)
 ```
 
-### Key Modules (Planned)
+### Modules
 
+#### Phase 1 (Done — 83 tests)
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.TextPart` / `FilePart` / `DataPart` | `part.ex` | Content part types |
+| `A2AEx.FileBytes` / `FileURI` | `part.ex` | File content variants |
+| `A2AEx.Part` | `part.ex` | Part union encode/decode |
+| `A2AEx.Message` | `message.ex` | Messages with role, parts, IDs |
+| `A2AEx.TaskState` / `TaskStatus` / `Task` | `task.ex` | Task lifecycle |
+| `A2AEx.Artifact` | `artifact.ex` | Agent output artifacts |
+| `A2AEx.TaskStatusUpdateEvent` / `TaskArtifactUpdateEvent` | `event.ex` | Streaming events |
+| `A2AEx.Event` | `event.ex` | Event union decoder |
+| `A2AEx.AgentCard` / `AgentCapabilities` / `AgentSkill` | `agent_card.ex` | Agent metadata |
+| `A2AEx.Error` | `error.ex` | 15 error types |
+| `A2AEx.JSONRPC` | `jsonrpc.ex` | JSON-RPC 2.0 layer |
+| `A2AEx.TaskIDParams` / `TaskQueryParams` / `MessageSendParams` | `params.ex` | Request params |
+| `A2AEx.PushConfig` / `PushAuthInfo` / `TaskPushConfig` | `push.ex` | Push notification types |
+| `A2AEx.ID` | `id.ex` | UUID v4 generation |
+
+#### Phase 2+ (Planned)
 | Module | Purpose | Phase |
 |--------|---------|-------|
-| `A2AEx.Types` | A2A protocol types (Task, Message, Part, etc.) | 1 |
-| `A2AEx.JSONRPC` | JSON-RPC 2.0 encode/decode | 1 |
 | `A2AEx.TaskStore` | Task persistence behaviour + InMemory | 2 |
 | `A2AEx.EventQueue` | Per-task SSE event delivery | 2 |
 | `A2AEx.AgentExecutor` | Agent execution behaviour | 2 |
@@ -60,7 +77,6 @@ A2AEx.Server (Plug.Router)
 | `A2AEx.Converter` | ADK ↔ A2A type conversion | 4 |
 | `A2AEx.RemoteAgent` | ADK agent backed by A2A client | 4 |
 | `A2AEx.Client` | HTTP client for remote A2A agents | 5 |
-| `A2AEx.AgentCard` | Agent card struct + serialization | 1 |
 
 ## Critical Rules
 
@@ -72,18 +88,25 @@ A2AEx.Server (Plug.Router)
 6. **Verify all changes**: Always run `mix test && mix credo && mix dialyzer`
 7. **No Phoenix**: Use Plug.Router directly — keep dependencies minimal
 8. **Struct-based types**: Match ADK conventions (defstruct + @type)
+9. **defstruct ordering**: Keyword defaults must come LAST — `[:a, :b, c: default]` not `[:a, c: default, :b]`
+10. **JSON camelCase**: Use custom `Jason.Encoder` + `from_map/1` for camelCase ↔ snake_case conversion
+11. **Kind discriminator**: All events/parts/tasks include `"kind"` field in JSON for polymorphic decode
 
 ## Go Reference File Map
 
 | A2AEx Module | Read This Go File |
 |-------------|-------------------|
-| Types | `/workspace/a2a-go/a2a.go` |
-| JSONRPC | `/workspace/a2a-go/jsonrpc.go` |
-| TaskStore | `/workspace/a2a-go/server/task_store.go` |
-| EventQueue | `/workspace/a2a-go/server/event_queue.go` |
-| AgentExecutor | `/workspace/a2a-go/server/server.go` |
-| RequestHandler | `/workspace/a2a-go/server/request_handler.go` |
-| Server | `/workspace/a2a-go/server/server.go` |
+| Types (Part, Message, Task, etc.) | `/workspace/a2a-go/a2a/core.go` |
+| AgentCard, Skills, Capabilities | `/workspace/a2a-go/a2a/agent.go` |
+| Push notification types | `/workspace/a2a-go/a2a/push.go` |
+| Error definitions | `/workspace/a2a-go/a2a/errors.go` |
+| JSONRPC (error codes, methods) | `/workspace/a2a-go/internal/jsonrpc/jsonrpc.go` |
+| JSONRPC handler (dispatch) | `/workspace/a2a-go/a2asrv/jsonrpc.go` |
+| TaskStore | `/workspace/a2a-go/a2asrv/tasks.go` |
+| EventQueue | `/workspace/a2a-go/a2asrv/eventqueue/` |
+| AgentExecutor | `/workspace/a2a-go/a2asrv/agentexec.go` |
+| RequestHandler | `/workspace/a2a-go/a2asrv/handler.go` |
+| PushConfigStore + Sender | `/workspace/a2a-go/a2asrv/push/` |
 | ADKExecutor | `/workspace/adk-go/server/adka2a/executor.go` |
 | Converter | `/workspace/adk-go/server/adka2a/part_converter.go` + `event_converter.go` |
-| Client | `/workspace/a2a-go/client/client.go` |
+| Client | `/workspace/a2a-go/a2aclient/client.go` |
