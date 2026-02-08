@@ -30,27 +30,29 @@ defmodule A2AEx.JSONRPCTest do
     end
 
     test "rejects malformed JSON" do
-      assert {:error, %A2AEx.Error{type: :parse_error}} = A2AEx.JSONRPC.decode_request("not json")
+      assert {:error, %A2AEx.Error{type: :parse_error}, nil} =
+               A2AEx.JSONRPC.decode_request("not json")
     end
 
     test "rejects wrong jsonrpc version" do
       json = Jason.encode!(%{"jsonrpc" => "1.0", "method" => "test", "id" => 1})
-      assert {:error, %A2AEx.Error{type: :invalid_request}} = A2AEx.JSONRPC.decode_request(json)
+      assert {:error, %A2AEx.Error{type: :invalid_request}, 1} = A2AEx.JSONRPC.decode_request(json)
     end
 
     test "rejects missing method" do
       json = Jason.encode!(%{"jsonrpc" => "2.0", "id" => 1})
-      assert {:error, %A2AEx.Error{type: :invalid_request}} = A2AEx.JSONRPC.decode_request(json)
+      assert {:error, %A2AEx.Error{type: :invalid_request}, 1} = A2AEx.JSONRPC.decode_request(json)
     end
 
     test "rejects empty method" do
       json = Jason.encode!(%{"jsonrpc" => "2.0", "method" => "", "id" => 1})
-      assert {:error, %A2AEx.Error{type: :invalid_request}} = A2AEx.JSONRPC.decode_request(json)
+      assert {:error, %A2AEx.Error{type: :invalid_request}, 1} = A2AEx.JSONRPC.decode_request(json)
     end
 
     test "rejects invalid id type (array)" do
       json = Jason.encode!(%{"jsonrpc" => "2.0", "method" => "test", "id" => [1, 2]})
-      assert {:error, %A2AEx.Error{type: :invalid_request}} = A2AEx.JSONRPC.decode_request(json)
+      assert {:error, %A2AEx.Error{type: :invalid_request}, nil} =
+               A2AEx.JSONRPC.decode_request(json)
     end
   end
 

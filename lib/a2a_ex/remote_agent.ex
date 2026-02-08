@@ -155,6 +155,18 @@ defmodule A2AEx.RemoteAgent do
 
   # --- A2A event → ADK event conversion (streaming) ---
 
+  defp convert_a2a_event(%A2AEx.Task{} = task, ctx) do
+    task_map = A2AEx.Task.to_map(task)
+    status_events = convert_status_message(task_map["status"], ctx)
+
+    artifact_events =
+      (task_map["artifacts"] || [])
+      |> Enum.flat_map(&convert_artifact_map(&1, ctx))
+      |> Enum.map(&%{&1 | partial: true})
+
+    artifact_events ++ status_events
+  end
+
   defp convert_a2a_event(%A2AEx.TaskStatusUpdateEvent{} = event, ctx) do
     convert_streaming_status(event, ctx)
   end

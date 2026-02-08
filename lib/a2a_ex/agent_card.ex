@@ -109,7 +109,10 @@ defmodule A2AEx.AgentCard do
           provider: A2AEx.AgentProvider.t() | nil,
           documentation_url: String.t() | nil,
           icon_url: String.t() | nil,
-          supports_authenticated_extended_card: boolean()
+          supports_authenticated_extended_card: boolean(),
+          security_schemes: map() | nil,
+          security: [map()] | nil,
+          preferred_transport: String.t() | nil
         }
 
   @enforce_keys [:name, :description, :url, :version]
@@ -126,7 +129,10 @@ defmodule A2AEx.AgentCard do
     skills: [],
     default_input_modes: ["text/plain"],
     default_output_modes: ["text/plain"],
-    supports_authenticated_extended_card: false
+    supports_authenticated_extended_card: false,
+    security_schemes: nil,
+    security: nil,
+    preferred_transport: nil
   ]
 
   @spec from_map(map()) :: {:ok, t()} | {:error, String.t()}
@@ -155,7 +161,10 @@ defmodule A2AEx.AgentCard do
        documentation_url: map["documentationUrl"],
        icon_url: map["iconUrl"],
        supports_authenticated_extended_card:
-         map["supportsAuthenticatedExtendedCard"] || false
+         map["supportsAuthenticatedExtendedCard"] || false,
+       security_schemes: map["securitySchemes"],
+       security: map["security"],
+       preferred_transport: map["preferredTransport"]
      }}
   end
 
@@ -179,6 +188,9 @@ defmodule A2AEx.AgentCard do
       "supportsAuthenticatedExtendedCard",
       card.supports_authenticated_extended_card
     )
+    |> maybe_put("securitySchemes", card.security_schemes)
+    |> maybe_put("security", card.security)
+    |> maybe_put("preferredTransport", card.preferred_transport)
   end
 
   defp maybe_put_provider(map, nil), do: map

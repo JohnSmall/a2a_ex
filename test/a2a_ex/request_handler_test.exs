@@ -243,8 +243,8 @@ defmodule A2AEx.RequestHandlerTest do
     assert {:ok, result} =
              send_request(handler, "tasks/get", %{"id" => "t3", "historyLength" => 0})
 
-    # Empty history not included in map output
-    refute Map.has_key?(result, "history")
+    # Empty history is included as empty list
+    assert result["history"] == []
   end
 
   test "tasks/get returns error for non-existent task", %{store: store} do
@@ -277,7 +277,7 @@ defmodule A2AEx.RequestHandlerTest do
     assert result["status"]["state"] == "canceled"
   end
 
-  test "tasks/cancel rejects completed task", %{store: store} do
+  test "tasks/cancel allows canceling completed task", %{store: store} do
     handler = make_handler(store)
 
     task = %Task{
@@ -288,8 +288,8 @@ defmodule A2AEx.RequestHandlerTest do
 
     TaskStore.InMemory.save(store, task)
 
-    assert {:error, error} = send_request(handler, "tasks/cancel", %{"id" => "tc2"})
-    assert error.type == :task_not_cancelable
+    assert {:ok, result} = send_request(handler, "tasks/cancel", %{"id" => "tc2"})
+    assert result["status"]["state"] == "canceled"
   end
 
   test "tasks/cancel returns error for non-existent task", %{store: store} do
@@ -345,6 +345,17 @@ defmodule A2AEx.RequestHandlerTest do
       push_config_store: {A2AEx.PushConfigStore.InMemory, push_store},
       push_sender: A2AEx.PushSender.HTTP
     }
+
+    # Pre-create task so push config operations can find it
+    task = %A2AEx.Task{
+      id: "task-push-1",
+      context_id: "ctx-push",
+      status: %A2AEx.TaskStatus{state: :working, timestamp: DateTime.utc_now()},
+      history: [],
+      artifacts: []
+    }
+
+    TaskStore.InMemory.save(store, task)
 
     # Set
     set_params = %{

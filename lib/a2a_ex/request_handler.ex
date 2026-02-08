@@ -149,13 +149,9 @@ defmodule A2AEx.RequestHandler do
   end
 
   defp fetch_task_for_query(handler, query) do
-    case task_store_get(handler, query.id) do
-      {:ok, task} ->
-        task = truncate_history(task, query.history_length)
-        {:ok, A2AEx.Task.to_map(task)}
-
-      {:error, :not_found} ->
-        {:error, A2AEx.Error.new(:task_not_found, "task not found")}
+    with {:ok, task} <- find_task(handler, query.id),
+         {:ok, task} <- truncate_history(task, query.history_length) do
+      {:ok, A2AEx.Task.to_map(task)}
     end
   end
 
@@ -166,18 +162,16 @@ defmodule A2AEx.RequestHandler do
     with {:ok, id_params} <- A2AEx.TaskIDParams.from_map(params || %{}),
          :ok <- require_id(id_params.id),
          {:ok, task} <- find_task(handler, id_params.id),
-         :ok <- check_cancelable(task) do
+         :ok <- check_not_already_canceled(task) do
       do_cancel(handler, task, id_params)
     end
   end
 
-  defp check_cancelable(task) do
-    if A2AEx.TaskState.terminal?(task.status.state) do
-      {:error, A2AEx.Error.new(:task_not_cancelable, "task is already in terminal state")}
-    else
-      :ok
-    end
+  defp check_not_already_canceled(%{status: %{state: :canceled}}) do
+    {:error, A2AEx.Error.new(:task_not_cancelable, "task is already canceled")}
   end
+
+  defp check_not_already_canceled(_task), do: :ok
 
   defp do_cancel(handler, task, id_params) do
     req_ctx = %A2AEx.RequestContext{
@@ -228,7 +222,8 @@ defmodule A2AEx.RequestHandler do
   @doc false
   def handle_push_config_set(handler, params) do
     with :ok <- check_push_support(handler),
-         {:ok, tpc} <- A2AEx.TaskPushConfig.from_map(params || %{}) do
+         {:ok, tpc} <- A2AEx.TaskPushConfig.from_map(params || %{}),
+         {:ok, _task} <- find_task(handler, tpc.task_id) do
       do_push_config_save(handler, tpc)
     end
   end
@@ -256,10 +251,36 @@ defmodule A2AEx.RequestHandler do
 
   defp do_push_config_get(handler, gp) do
     {mod, store} = handler.push_config_store
+    config_id = gp.config_id
 
-    case mod.get(store, gp.task_id, gp.config_id || "") do
+    # If config_id is "default" or nil, try to return the first config for this task
+    if config_id == "default" || config_id == nil || config_id == "" do
+      get_default_push_config(handler, gp.task_id, mod, store)
+    else
+      get_push_config_by_id(gp.task_id, config_id, mod, store)
+    end
+  end
+
+  defp get_default_push_config(handler, task_id, mod, store) do
+    with {:ok, _task} <- find_task(handler, task_id) do
+      case mod.list(store, task_id) do
+        {:ok, [config | _]} ->
+          result = %A2AEx.TaskPushConfig{task_id: task_id, push_notification_config: config}
+          {:ok, A2AEx.TaskPushConfig.to_map(result)}
+
+        {:ok, []} ->
+          {:error, A2AEx.Error.new(:task_not_found, "push config not found")}
+
+        {:error, _} ->
+          {:error, A2AEx.Error.new(:task_not_found, "push config not found")}
+      end
+    end
+  end
+
+  defp get_push_config_by_id(task_id, config_id, mod, store) do
+    case mod.get(store, task_id, config_id) do
       {:ok, config} ->
-        result = %A2AEx.TaskPushConfig{task_id: gp.task_id, push_notification_config: config}
+        result = %A2AEx.TaskPushConfig{task_id: task_id, push_notification_config: config}
         {:ok, A2AEx.TaskPushConfig.to_map(result)}
 
       {:error, :not_found} ->
@@ -270,10 +291,11 @@ defmodule A2AEx.RequestHandler do
   @doc false
   def handle_push_config_delete(handler, params) do
     with :ok <- check_push_support(handler),
-         {:ok, dp} <- A2AEx.DeleteTaskPushConfigParams.from_map(params || %{}) do
+         {:ok, dp} <- A2AEx.DeleteTaskPushConfigParams.from_map(params || %{}),
+         {:ok, _task} <- find_task(handler, dp.task_id) do
       {mod, store} = handler.push_config_store
       mod.delete(store, dp.task_id, dp.config_id)
-      {:ok, %{}}
+      {:ok, nil}
     end
   end
 
@@ -347,11 +369,33 @@ defmodule A2AEx.RequestHandler do
   end
 
   defp parse_send_params(params) when is_map(params) do
-    case A2AEx.MessageSendParams.from_map(params) do
-      {:ok, _} = ok -> ok
-      {:error, reason} -> {:error, A2AEx.Error.new(:invalid_params, "invalid params: #{reason}")}
+    with :ok <- validate_raw_message(params["message"]) do
+      case A2AEx.MessageSendParams.from_map(params) do
+        {:ok, _} = ok -> ok
+        {:error, reason} -> {:error, A2AEx.Error.new(:invalid_params, "invalid params: #{reason}")}
+      end
     end
   end
+
+  defp validate_raw_message(nil), do: :ok
+
+  defp validate_raw_message(msg) when is_map(msg) do
+    cond do
+      !Map.has_key?(msg, "messageId") ->
+        {:error, A2AEx.Error.new(:invalid_params, "message messageId is required")}
+
+      !Map.has_key?(msg, "role") ->
+        {:error, A2AEx.Error.new(:invalid_params, "message role is required")}
+
+      !Map.has_key?(msg, "parts") ->
+        {:error, A2AEx.Error.new(:invalid_params, "message parts is required")}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_raw_message(_), do: :ok
 
   defp validate_message(%A2AEx.MessageSendParams{message: %A2AEx.Message{parts: []}}) do
     {:error, A2AEx.Error.new(:invalid_params, "message parts is required")}
@@ -413,20 +457,24 @@ defmodule A2AEx.RequestHandler do
     A2AEx.EventQueue.enqueue(task_id, %{error_event | final: true})
   end
 
-  defp update_task_from_event(handler, task_id, %A2AEx.TaskStatusUpdateEvent{} = event) do
+  @doc false
+  def update_task_from_event(handler, task_id, %A2AEx.TaskStatusUpdateEvent{} = event) do
     with {:ok, task} <- task_store_get(handler, task_id) do
       task_store_save(handler, %{task | status: event.status})
     end
   end
 
-  defp update_task_from_event(handler, task_id, %A2AEx.TaskArtifactUpdateEvent{} = event) do
+  def update_task_from_event(handler, task_id, %A2AEx.TaskArtifactUpdateEvent{} = event) do
     with {:ok, task} <- task_store_get(handler, task_id) do
       artifacts = (task.artifacts || []) ++ [event.artifact]
       task_store_save(handler, %{task | artifacts: artifacts})
     end
   end
 
-  defp update_task_from_event(_handler, _task_id, _event), do: :ok
+  def update_task_from_event(_handler, _task_id, _event), do: :ok
+
+  @doc false
+  def get_task(handler, task_id), do: task_store_get(handler, task_id)
 
   defp should_interrupt?(send_params, event) do
     config = send_params.config
@@ -450,21 +498,25 @@ defmodule A2AEx.RequestHandler do
     end
   end
 
-  defp truncate_history(task, nil), do: task
+  defp truncate_history(task, nil), do: {:ok, task}
 
-  defp truncate_history(task, hist_len) when is_integer(hist_len) and hist_len <= 0 do
-    %{task | history: []}
+  defp truncate_history(task, hist_len) when is_integer(hist_len) and hist_len == 0 do
+    {:ok, %{task | history: []}}
   end
 
-  defp truncate_history(%{history: nil} = task, _), do: task
+  defp truncate_history(_task, hist_len) when is_integer(hist_len) and hist_len < 0 do
+    {:error, A2AEx.Error.new(:invalid_params, "historyLength must be non-negative")}
+  end
+
+  defp truncate_history(%{history: nil} = task, _), do: {:ok, task}
 
   defp truncate_history(task, hist_len) when is_integer(hist_len) do
     history = task.history || []
 
     if hist_len >= length(history) do
-      task
+      {:ok, task}
     else
-      %{task | history: Enum.take(history, -hist_len)}
+      {:ok, %{task | history: Enum.take(history, -hist_len)}}
     end
   end
 

@@ -87,30 +87,35 @@ defmodule A2AEx.JSONRPC do
   Decode a JSON-RPC request from a JSON string.
   Returns `{:ok, request_map}` or `{:error, A2AEx.Error.t()}`.
   """
-  @spec decode_request(String.t()) :: {:ok, request()} | {:error, A2AEx.Error.t()}
+  @spec decode_request(String.t()) ::
+          {:ok, request()} | {:error, A2AEx.Error.t(), term()}
   def decode_request(json) when is_binary(json) do
     case Jason.decode(json) do
       {:ok, map} -> validate_request(map)
-      {:error, _} -> {:error, A2AEx.Error.new(:parse_error, "malformed JSON")}
+      {:error, _} -> {:error, A2AEx.Error.new(:parse_error, "malformed JSON"), nil}
     end
   end
 
   @doc """
   Decode a JSON-RPC request from an already-decoded map.
   """
-  @spec decode_request_map(map()) :: {:ok, request()} | {:error, A2AEx.Error.t()}
+  @spec decode_request_map(map()) ::
+          {:ok, request()} | {:error, A2AEx.Error.t(), term()}
   def decode_request_map(map) when is_map(map), do: validate_request(map)
 
   defp validate_request(map) do
+    raw_id = map["id"]
+    safe_id = if valid_id?(raw_id), do: raw_id, else: nil
+
     cond do
       map["jsonrpc"] != @version ->
-        {:error, A2AEx.Error.new(:invalid_request, "invalid jsonrpc version")}
+        {:error, A2AEx.Error.new(:invalid_request, "invalid jsonrpc version"), safe_id}
 
       !is_binary(map["method"]) || map["method"] == "" ->
-        {:error, A2AEx.Error.new(:invalid_request, "missing or invalid method")}
+        {:error, A2AEx.Error.new(:invalid_request, "missing or invalid method"), safe_id}
 
-      !valid_id?(map["id"]) ->
-        {:error, A2AEx.Error.new(:invalid_request, "invalid request id")}
+      !valid_id?(raw_id) ->
+        {:error, A2AEx.Error.new(:invalid_request, "invalid request id"), nil}
 
       true ->
         {:ok,
@@ -118,7 +123,7 @@ defmodule A2AEx.JSONRPC do
            jsonrpc: @version,
            method: map["method"],
            params: map["params"],
-           id: map["id"]
+           id: raw_id
          }}
     end
   end

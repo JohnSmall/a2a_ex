@@ -194,7 +194,6 @@ defmodule A2AEx.Task do
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp maybe_put_list(map, _key, nil, _fun), do: map
-  defp maybe_put_list(map, _key, [], _fun), do: map
   defp maybe_put_list(map, key, list, fun), do: Map.put(map, key, Enum.map(list, fun))
 end
 

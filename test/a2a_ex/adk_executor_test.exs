@@ -230,6 +230,7 @@ defmodule A2AEx.ADKExecutorTest do
     params = %{
       "message" => %{
         "role" => "user",
+        "messageId" => "test-msg-#{System.unique_integer([:positive])}",
         "parts" => [%{"kind" => "text", "text" => "hello"}]
       }
     }
@@ -256,6 +257,7 @@ defmodule A2AEx.ADKExecutorTest do
     params = %{
       "message" => %{
         "role" => "user",
+        "messageId" => "test-msg-#{System.unique_integer([:positive])}",
         "parts" => [%{"kind" => "text", "text" => "stream me"}]
       }
     }

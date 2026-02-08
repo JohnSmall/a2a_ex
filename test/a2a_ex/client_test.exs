@@ -91,6 +91,7 @@ defmodule A2AEx.ClientTest do
     %{
       "message" => %{
         "role" => "user",
+        "messageId" => "test-msg-#{System.unique_integer([:positive])}",
         "parts" => [%{"kind" => "text", "text" => text}]
       }
     }
@@ -192,12 +193,11 @@ defmodule A2AEx.ClientTest do
     assert {:ok, stream} = Client.stream_message(client, params)
     events = Enum.to_list(stream)
 
-    status_events =
-      Enum.filter(events, &match?(%TaskStatusUpdateEvent{}, &1))
+    # SSE now sends Task objects (not raw events)
+    task_events = Enum.filter(events, &match?(%A2AEx.Task{}, &1))
+    assert length(task_events) >= 2
 
-    assert length(status_events) >= 2
-
-    states = Enum.map(status_events, & &1.status.state)
+    states = Enum.map(task_events, & &1.status.state)
     assert :working in states
     assert :completed in states
   end
@@ -226,8 +226,12 @@ defmodule A2AEx.ClientTest do
     assert {:ok, stream} = Client.stream_message(client, params)
     events = Enum.to_list(stream)
 
-    artifact_events = Enum.filter(events, &match?(%TaskArtifactUpdateEvent{}, &1))
-    assert artifact_events != []
+    # SSE now sends Task objects with accumulated artifacts
+    task_with_artifacts = Enum.filter(events, fn
+      %A2AEx.Task{artifacts: arts} when is_list(arts) and arts != [] -> true
+      _ -> false
+    end)
+    assert task_with_artifacts != []
 
     if Process.alive?(server_pid), do: Process.exit(server_pid, :normal)
   end

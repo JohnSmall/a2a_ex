@@ -168,6 +168,7 @@ defmodule A2AEx.IntegrationTest do
     %{
       "message" => %{
         "role" => "user",
+        "messageId" => "test-msg-#{System.unique_integer([:positive])}",
         "parts" => [%{"kind" => "text", "text" => text}]
       }
     }
@@ -177,6 +178,7 @@ defmodule A2AEx.IntegrationTest do
     %{
       "message" => %{
         "role" => "user",
+        "messageId" => "test-msg-#{System.unique_integer([:positive])}",
         "parts" => [%{"kind" => "text", "text" => text}],
         "contextId" => context_id
       }
@@ -239,15 +241,16 @@ defmodule A2AEx.IntegrationTest do
       {:ok, stream} = Client.stream_message(client, send_params("stream hi"))
       events = Enum.to_list(stream)
 
-      status_events = Enum.filter(events, &match?(%TaskStatusUpdateEvent{}, &1))
-      states = Enum.map(status_events, & &1.status.state)
+      # SSE now sends Task objects (not raw events)
+      task_events = Enum.filter(events, &match?(%A2AEx.Task{}, &1))
+      states = Enum.map(task_events, & &1.status.state)
       assert :working in states
       assert :completed in states
 
-      # Final event should have final: true
-      final = Enum.find(status_events, & &1.final)
-      assert final != nil
-      assert final.status.state == :completed
+      # Last task event should be completed
+      last = List.last(task_events)
+      assert last != nil
+      assert last.status.state == :completed
     end
 
     test "multi-event agent produces append artifacts" do
@@ -262,21 +265,15 @@ defmodule A2AEx.IntegrationTest do
       {:ok, stream} = Client.stream_message(client, send_params("multi"))
       events = Enum.to_list(stream)
 
-      artifact_events = Enum.filter(events, &match?(%TaskArtifactUpdateEvent{}, &1))
+      # SSE now sends Task objects — artifacts accumulate on the task
+      task_events = Enum.filter(events, &match?(%A2AEx.Task{}, &1))
 
-      # First artifact: append: false, subsequent: append: true
-      content_artifacts = Enum.reject(artifact_events, & &1.last_chunk)
-      assert length(content_artifacts) >= 2
-
-      first = hd(content_artifacts)
-      assert first.append == false
-
-      rest = tl(content_artifacts)
-      assert Enum.all?(rest, & &1.append == true)
-
-      # All share the same artifact_id
-      ids = Enum.map(content_artifacts, & &1.artifact.id) |> Enum.uniq()
-      assert length(ids) == 1
+      # Tasks with artifacts should have growing artifact lists
+      tasks_with_artifacts = Enum.filter(task_events, fn
+        %A2AEx.Task{artifacts: arts} when is_list(arts) and arts != [] -> true
+        _ -> false
+      end)
+      assert length(tasks_with_artifacts) >= 2
     end
 
     test "agent error results in failed task" do
@@ -392,7 +389,7 @@ defmodule A2AEx.IntegrationTest do
       assert first_events != []
 
       first = hd(first_events)
-      task_id = first.task_id
+      task_id = first.id
 
       # Cancel the task
       {:ok, canceled} = Client.cancel_task(client, %{"id" => task_id})

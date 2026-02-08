@@ -20,7 +20,7 @@ defmodule A2AEx.TaskQueryParams do
 
   @type t :: %__MODULE__{
           id: String.t(),
-          history_length: non_neg_integer() | nil,
+          history_length: integer() | nil,
           metadata: map() | nil
         }
 

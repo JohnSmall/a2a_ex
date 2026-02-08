@@ -2,8 +2,9 @@ defmodule A2AEx.Server do
   @moduledoc """
   Plug-based HTTP server for the A2A protocol.
 
-  Provides two endpoints:
-  - `GET /.well-known/agent.json` — Serves the agent card
+  Provides endpoints:
+  - `GET /.well-known/agent-card.json` — Serves the agent card (v0.3.0)
+  - `GET /.well-known/agent.json` — Serves the agent card (v0.2.5 compat)
   - `POST /` — JSON-RPC dispatch (sync and streaming)
 
   ## Usage
@@ -35,6 +36,9 @@ defmodule A2AEx.Server do
     handler = Keyword.fetch!(opts, :handler)
 
     case {conn.method, conn.path_info} do
+      {"GET", [".well-known", "agent-card.json"]} ->
+        handle_agent_card(conn, handler)
+
       {"GET", [".well-known", "agent.json"]} ->
         handle_agent_card(conn, handler)
 
@@ -74,8 +78,8 @@ defmodule A2AEx.Server do
           handle_sync(conn, handler, request)
         end
 
-      {:error, error} ->
-        send_jsonrpc_error(conn, error, nil)
+      {:error, error, req_id} ->
+        send_jsonrpc_error(conn, error, req_id)
     end
   end
 
@@ -101,14 +105,27 @@ defmodule A2AEx.Server do
     case A2AEx.RequestHandler.handle(handler, request) do
       {:stream, task_id} ->
         conn = start_sse(conn)
-        stream_events(conn, task_id, request.id)
+        stream_events(conn, handler, task_id, request.id)
 
       {:error, error} ->
-        send_jsonrpc_error(conn, error, request.id)
+        send_streaming_error(conn, request, error)
 
       {:ok, result} ->
         send_jsonrpc_response(conn, result, request.id)
     end
+  end
+
+  # tasks/resubscribe errors: send as SSE event per A2A spec
+  defp send_streaming_error(conn, %{method: "tasks/resubscribe"} = request, error) do
+    conn = start_sse(conn)
+    error_resp = A2AEx.JSONRPC.error_map(error, request.id)
+    send_sse_event(conn, error_resp)
+    conn
+  end
+
+  # Other streaming method errors (e.g. invalid params): send as JSON
+  defp send_streaming_error(conn, request, error) do
+    send_jsonrpc_error(conn, error, request.id)
   end
 
   defp start_sse(conn) do
@@ -119,14 +136,14 @@ defmodule A2AEx.Server do
     |> send_chunked(200)
   end
 
-  defp stream_events(conn, task_id, request_id) do
+  defp stream_events(conn, handler, task_id, request_id) do
     receive do
       {:a2a_event, ^task_id, event} ->
-        event_map = A2AEx.Event.to_map(event)
-        resp = A2AEx.JSONRPC.response_map(event_map, request_id)
+        task_map = update_and_get_task(handler, task_id, event)
+        resp = A2AEx.JSONRPC.response_map(task_map, request_id)
 
         case send_sse_event(conn, resp) do
-          {:ok, conn} -> stream_events(conn, task_id, request_id)
+          {:ok, conn} -> stream_events(conn, handler, task_id, request_id)
           {:error, _} -> conn
         end
 
@@ -138,6 +155,15 @@ defmodule A2AEx.Server do
         error_resp = A2AEx.JSONRPC.error_map(error, request_id)
         send_sse_event(conn, error_resp)
         conn
+    end
+  end
+
+  defp update_and_get_task(handler, task_id, event) do
+    A2AEx.RequestHandler.update_task_from_event(handler, task_id, event)
+
+    case A2AEx.RequestHandler.get_task(handler, task_id) do
+      {:ok, task} -> A2AEx.Task.to_map(task)
+      {:error, _} -> A2AEx.Event.to_map(event)
     end
   end
 
