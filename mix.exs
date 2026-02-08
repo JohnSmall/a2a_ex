@@ -25,6 +25,7 @@ defmodule A2AEx.MixProject do
       {:plug, "~> 1.16"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
+      {:bandit, "~> 1.0", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}

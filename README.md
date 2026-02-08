@@ -6,7 +6,9 @@ Elixir implementation of the [Agent-to-Agent (A2A) protocol](https://github.com/
 
 - **Full A2A protocol support** — All 10 JSON-RPC methods (message/send, message/stream, tasks/get, tasks/cancel, push config CRUD, etc.)
 - **Server** — Plug-based HTTP endpoint with JSON-RPC dispatch and SSE streaming
+- **Client** — HTTP client for consuming remote A2A agents (sync + streaming via SSE)
 - **ADK Integration** — Bridge ADK agents into the A2A protocol via `ADKExecutor` + `Converter`
+- **RemoteAgent** — Wrap any remote A2A agent as a local ADK agent for orchestration
 - **Agent Card** — Serve agent metadata at `/.well-known/agent.json`
 - **Push Notifications** — Webhook-based task update delivery
 - **Pluggable Storage** — Behaviour-based `TaskStore` and `PushConfigStore` with in-memory implementations
@@ -48,6 +50,34 @@ handler = %A2AEx.RequestHandler{
 Plug.Cowboy.http(A2AEx.Server, [handler: handler], port: 4000)
 ```
 
+### Consume a Remote A2A Agent
+
+```elixir
+# As a standalone client
+client = A2AEx.Client.new("http://remote-host:4000")
+{:ok, card} = A2AEx.Client.get_agent_card(client)
+
+params = %{"message" => %{"role" => "user", "parts" => [%{"kind" => "text", "text" => "Hello!"}]}}
+{:ok, task} = A2AEx.Client.send_message(client, params)
+
+# Or stream events
+{:ok, stream} = A2AEx.Client.stream_message(client, params)
+Enum.each(stream, &IO.inspect/1)
+```
+
+### Use a Remote Agent in ADK Orchestration
+
+```elixir
+# Wrap as an ADK agent for use in Sequential/Parallel/etc.
+remote = A2AEx.RemoteAgent.new(%A2AEx.RemoteAgent.Config{
+  name: "remote-helper",
+  url: "http://remote-host:4000",
+  description: "Remote A2A agent"
+})
+
+# Use as sub-agent in a SequentialAgent, ParallelAgent, or directly via Runner
+```
+
 ### Custom Executor (without ADK)
 
 ```elixir
@@ -73,21 +103,20 @@ end
 ## Architecture
 
 ```
-A2AEx.Server (@behaviour Plug)
-    -> A2AEx.JSONRPC (parse/encode)
-        -> A2AEx.RequestHandler (dispatch for 10 methods)
-            -> A2AEx.AgentExecutor (execute/cancel)
-            -> {A2AEx.ADKExecutor, config} (ADK bridge)
-                -> A2AEx.Converter (ADK <-> A2A types)
-            -> A2AEx.TaskStore (task persistence)
-            -> A2AEx.EventQueue (SSE event delivery)
-            -> A2AEx.PushConfigStore (webhook config)
-            -> A2AEx.PushSender (webhook delivery)
+Server:                                Client:
+  A2AEx.Server (Plug)                    A2AEx.Client (Req HTTP)
+      -> JSONRPC (parse/encode)              -> Client.SSE (SSE parser)
+          -> RequestHandler                  -> RemoteAgent (ADK agent wrapper)
+              -> AgentExecutor                   -> Converter (A2A -> ADK)
+              -> {ADKExecutor, config}
+                  -> Converter (ADK <-> A2A)
+              -> TaskStore, EventQueue
+              -> PushConfigStore, PushSender
 ```
 
 ## Status
 
-**Phase 4 complete** — 191 tests, credo clean, dialyzer clean.
+**Phase 5 complete** — 217 tests, credo clean, dialyzer clean.
 
 | Phase | Status | Tests |
 |-------|--------|-------|
@@ -95,14 +124,14 @@ A2AEx.Server (@behaviour Plug)
 | 2. TaskStore + EventQueue + AgentExecutor | Done | 31 |
 | 3. RequestHandler + Server | Done | 44 |
 | 4. ADK Integration (Converter + ADKExecutor) | Done | 33 |
-| 5. Client + RemoteAgent | Next | -- |
-| 6. Integration Testing | Planned | -- |
+| 5. Client + RemoteAgent | Done | 26 |
+| 6. Integration Testing | Next | -- |
 
 ## Development
 
 ```bash
 mix deps.get       # Fetch dependencies
-mix test           # Run tests (191 passing)
+mix test           # Run tests (217 passing)
 mix credo          # Static analysis (0 issues)
 mix dialyzer       # Type checking (0 errors)
 ```
@@ -112,7 +141,8 @@ mix dialyzer       # Type checking (0 errors)
 - [ADK](https://github.com/JohnSmall/adk) — Agent Development Kit for Elixir
 - [Plug](https://hex.pm/packages/plug) — HTTP server interface
 - [Jason](https://hex.pm/packages/jason) — JSON encoding/decoding
-- [Req](https://hex.pm/packages/req) — HTTP client (for push notification delivery)
+- [Req](https://hex.pm/packages/req) — HTTP client (for push delivery, A2A client, and RemoteAgent)
+- [Bandit](https://hex.pm/packages/bandit) — HTTP server (test-only, for client/RemoteAgent integration tests)
 
 ## License
 

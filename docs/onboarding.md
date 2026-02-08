@@ -22,7 +22,7 @@ A2AEx provides:
 
 ## 2. Current Status
 
-**Phase 4 COMPLETE — 191 tests, credo clean, dialyzer clean. Ready for Phase 5 (Client + RemoteAgent).**
+**Phase 5 COMPLETE — 217 tests, credo clean, dialyzer clean. Ready for Phase 6 (Integration Testing).**
 
 ### What's Built (Phase 1: Core Types + JSON-RPC — 83 tests)
 
@@ -83,12 +83,22 @@ A2AEx provides:
 **Key changes to existing modules:**
 - `A2AEx.RequestHandler` — Broadened `executor` type to support `{module, config}` tuples alongside bare modules. Added `call_execute/3` + `call_cancel/3` dispatch helpers.
 
-### What's Next (Phase 5: Client + RemoteAgent)
+### What's Built (Phase 5: Client + RemoteAgent — 26 tests)
 
-| Module | Purpose |
-|--------|---------|
-| `A2AEx.Client` | HTTP client for consuming remote A2A agents |
-| `A2AEx.RemoteAgent` | ADK agent backed by A2A client (moved from Phase 4 — requires Client) |
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.Client.SSE` | `lib/a2a_ex/client/sse.ex` | SSE line parser with cross-chunk buffering |
+| `A2AEx.Client` | `lib/a2a_ex/client.ex` | HTTP client — all 10 JSON-RPC methods, sync + SSE streaming |
+| `A2AEx.RemoteAgent.Config` | `lib/a2a_ex/remote_agent.ex` | Config struct (name, url, description, client_opts) |
+| `A2AEx.RemoteAgent` | `lib/a2a_ex/remote_agent.ex` | ADK agent backed by remote A2A server (wraps CustomAgent) |
+
+### What's Next (Phase 6: Integration Testing)
+
+| Task | Purpose |
+|------|---------|
+| Full round-trip tests | Server↔Client with ADK agents, task lifecycle |
+| Interop tests | A2AEx client → Go sample server (and vice versa) |
+| Documentation | Hex docs, usage examples |
 
 ### What's Built in ADK (Dependency)
 
@@ -197,23 +207,31 @@ A2AEx.Server (@behaviour Plug)
 | `JSONRPCHandler` | `A2AEx.JSONRPC` | Module functions |
 | `PushConfigStore` | `A2AEx.PushConfigStore` | Behaviour + InMemory (GenServer + ETS) |
 | `PushSender` | `A2AEx.PushSender.HTTP` | Req-based HTTP |
-| `Client` | `A2AEx.Client` | Req HTTP client (Phase 5) |
-| ADK Executor | `A2AEx.ADKExecutor` | Wraps ADK.Runner (Phase 4) |
-| Part/Event converters | `A2AEx.Converter` | Pure functions (Phase 4) |
+| `Client` | `A2AEx.Client` | Req HTTP client + SSE streaming |
+| ADK Executor | `A2AEx.ADKExecutor` | Wraps ADK.Runner |
+| Part/Event converters | `A2AEx.Converter` | Pure functions |
 | `AgentCard` | `A2AEx.AgentCard` | Struct |
-| `RemoteAgent` | `A2AEx.RemoteAgent` | `@behaviour ADK.Agent` (Phase 4) |
+| `RemoteAgent` | `A2AEx.RemoteAgent` | Wraps `ADK.Agent.CustomAgent` |
+| SSE parser | `A2AEx.Client.SSE` | Line parser with buffering |
 
-### ADK-A2A Bridge (Phase 4)
+### ADK-A2A Bridge (Phases 4 + 5)
 
-The bridge connects ADK's event-sourced model to A2A's task-based model:
+The bridge connects ADK's event-sourced model to A2A's task-based model in both directions:
 
 ```
-ADK Side:                          A2A Side:
-ADK.Runner.run/5                   message/send or message/stream
-  → Stream of ADK.Event      →    TaskStatusUpdateEvent (state changes)
-  → Events with artifacts     →    TaskArtifactUpdateEvent (outputs)
-  → Events with text content  →    Task.status.message (final response)
-  → escalate/transfer actions →    Task state = completed/failed
+Server Side (Phase 4 — ADKExecutor):
+  ADK.Runner.run/5                   message/send or message/stream
+    → Stream of ADK.Event      →    TaskStatusUpdateEvent (state changes)
+    → Events with artifacts     →    TaskArtifactUpdateEvent (outputs)
+    → Events with text content  →    Task.status.message (final response)
+    → escalate/transfer actions →    Task state = completed/failed
+
+Client Side (Phase 5 — RemoteAgent):
+  A2AEx.Client.stream_message        ADK.Agent.CustomAgent.run
+    → TaskStatusUpdateEvent     →    ADK.Event with content
+    → TaskArtifactUpdateEvent   →    ADK.Event with content (partial: true)
+    → failed status             →    ADK.Event with error_code/error_message
+    → input_required status     →    ADK.Event with long_running_tool_ids
 ```
 
 Key conversion rules (implemented in `A2AEx.Converter`):
@@ -259,10 +277,13 @@ Read these files in order when implementing each phase:
 - `/workspace/adk-go/server/adka2a/part_converter.go` — Part type conversion
 - `/workspace/adk-go/server/adka2a/event_converter.go` — Event → A2A event conversion
 
-### Phase 5: Client
+### Phase 5: Client + RemoteAgent (DONE)
 - `/workspace/a2a-go/a2aclient/client.go` — Client implementation
 - `/workspace/a2a-go/a2aclient/transport.go` — HTTP transport
 - `/workspace/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
+- `/workspace/adk-go/agent/remoteagent/a2a_agent.go` — RemoteAgent implementation
+- `/workspace/adk-go/agent/remoteagent/a2a_agent_run_processor.go` — Event processing
+- `/workspace/adk-go/agent/remoteagent/utils.go` — Session history utilities
 
 ---
 
@@ -352,7 +373,7 @@ Executors run in a spawned process with try/rescue/after:
 ### Running Tests
 ```bash
 cd /workspace/a2a_ex
-mix test                    # Run all tests (158)
+mix test                    # Run all tests (217)
 mix test --trace            # Verbose output
 mix credo                   # Static analysis
 mix dialyzer                # Type checking
@@ -386,6 +407,10 @@ mix dialyzer                # Type checking
 16. **`{module, config}` executor pattern**: ADKExecutor uses 3-arity functions (`execute(config, req_ctx, task_id)`) but AgentExecutor behaviour is 2-arity. The RequestHandler dispatches via `call_execute/call_cancel` helpers with guards (`when is_atom(mod)` for bare modules, `{mod, config}` for tuples).
 17. **Converter is pure**: `A2AEx.Converter` has no state — all functions are pure. Use module attribute constants for repeated metadata keys (`@adk_type`, `@adk_thought`).
 18. **Base64 for inline_data**: ADK `Blob.data` is raw binary; A2A `FileBytes.bytes` is base64-encoded. The converter handles encoding/decoding automatically.
+19. **Bandit test cleanup**: Bandit has no public `stop/1` function. Use `Process.exit(server_pid, :normal)` + `Process.sleep(10)` in `on_exit` callbacks. Do NOT use `Supervisor.stop/1` or `ThousandIsland.stop/1` — both propagate `:shutdown` exit that ExUnit catches as a failure.
+20. **`Client.stream_message/2` always returns `{:ok, stream}`**: The streaming function always succeeds at the call site — HTTP and parsing errors surface inside the stream itself. Don't add an unreachable `{:error, _}` clause.
+21. **RemoteAgent wraps CustomAgent**: `A2AEx.RemoteAgent.new/1` returns an `ADK.Agent.CustomAgent` struct, not a custom behaviour implementation. This reuses CustomAgent's before/after callback machinery.
+22. **Streaming mode dispatch**: RemoteAgent checks `ctx.run_config.streaming_mode` to choose between `Client.send_message` (sync) and `Client.stream_message` (SSE). Default is `:none` (sync).
 
 ---
 
@@ -394,7 +419,7 @@ mix dialyzer                # Type checking
 ```bash
 cd /workspace/a2a_ex
 mix deps.get       # Fetch dependencies (including ADK from GitHub)
-mix test           # Run tests (191 passing)
+mix test           # Run tests (217 passing)
 mix credo          # Static analysis (0 issues)
 mix dialyzer       # Type checking (0 errors)
 iex -S mix         # Interactive shell

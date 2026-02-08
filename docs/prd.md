@@ -2,9 +2,9 @@
 
 ## Document Info
 - **Project**: A2AEx - Elixir implementation of the A2A protocol
-- **Version**: 0.4.0
-- **Date**: 2026-02-07
-- **Status**: Phase 4 complete (ADK Integration Bridge). Ready for Phase 5 (Client / RemoteAgent).
+- **Version**: 0.5.0
+- **Date**: 2026-02-08
+- **Status**: Phase 5 complete (Client + RemoteAgent). Ready for Phase 6 (Integration Testing).
 - **GitHub**: github.com/JohnSmall/a2a_ex
 - **Depends on**: ADK (github.com/JohnSmall/adk)
 
@@ -251,10 +251,11 @@ Key interfaces:
 | `A2AEx.Server` (@behaviour Plug) | Done | 10 | 3 |
 | `A2AEx.Converter` | Done | 23 | 4 |
 | `A2AEx.ADKExecutor` + `ADKExecutor.Config` | Done | 10 | 4 |
-| `A2AEx.RemoteAgent` | Planned | — | 5 |
-| `A2AEx.Client` | Planned | — | 5 |
+| `A2AEx.Client.SSE` | Done | 5 | 5 |
+| `A2AEx.Client` | Done | 11 | 5 |
+| `A2AEx.RemoteAgent` + `RemoteAgent.Config` | Done | 10 | 5 |
 
-**Total: 191 tests, credo clean, dialyzer clean.**
+**Total: 217 tests, credo clean, dialyzer clean.**
 
 ---
 
@@ -279,6 +280,10 @@ Key interfaces:
 | Dispatch tables + `apply/3` for RequestHandler | Reduces cyclomatic complexity vs large case statement; module attribute maps for method routing | Done |
 | `{module, server}` tuple for store references | Pluggable store implementations at runtime without GenServer overhead in handler | Done |
 | Spawned process for executor | try/rescue isolation, enqueues failed status on crash, always closes EventQueue in after block | Done |
+| spawn_link + Stream.resource for SSE client | Spawned process makes HTTP POST with Req's `into:` callback, sends `{:sse_chunk, ref, data}` messages to caller; Stream.resource receives/parses SSE | Done |
+| RemoteAgent wraps CustomAgent | Uses `ADK.Agent.CustomAgent.new` with a run function — avoids duplicating before/after callback logic | Done |
+| Sync vs streaming dispatch in RemoteAgent | Checks `run_config.streaming_mode` to choose `send_message` vs `stream_message` — matches Go's `StreamingModeNone` check | Done |
+| Bandit for test HTTP servers | Lightweight HTTP server for real end-to-end client/RemoteAgent tests; test-only dependency | Done |
 
 ---
 

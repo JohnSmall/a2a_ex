@@ -175,28 +175,44 @@ HTTP client for consuming remote A2A agents, and RemoteAgent (ADK agent backed b
 
 ### Tasks
 
-- [ ] **A2AEx.Client** — HTTP client for A2A servers
-  - [ ] `send_message/3` — POST JSON-RPC `message/send`, return Task
-  - [ ] `stream_message/3` — POST JSON-RPC `message/stream`, return SSE event stream
-  - [ ] `get_task/2` — `tasks/get`
-  - [ ] `cancel_task/2` — `tasks/cancel`
-  - [ ] `resubscribe/2` — `tasks/resubscribe`, return SSE stream
-  - [ ] Push config CRUD methods
-  - [ ] `get_agent_card/1` — GET `/.well-known/agent.json`
-  - [ ] SSE parsing (Server-Sent Events line protocol)
-  - [ ] Configurable base URL, timeout, headers
+- [x] **A2AEx.Client.SSE** — SSE line parser
+  - [x] `parse_chunk/2` — Parse SSE data with cross-chunk buffering
+  - [x] Handles `data: {json}\n\n` format, skips non-data lines
 
-- [ ] **A2AEx.RemoteAgent** — ADK agent backed by A2A client *(moved from Phase 4)*
-  - [ ] `@behaviour ADK.Agent`
-  - [ ] `run/2` — Send message via A2AEx.Client, convert response to ADK Events
-  - [ ] Support streaming (SSE → ADK Event stream)
+- [x] **A2AEx.Client** — HTTP client for A2A servers
+  - [x] `new/1,2` — Create client with base URL and optional Req options
+  - [x] `send_message/2` — POST JSON-RPC `message/send`, return Task result map
+  - [x] `stream_message/2` — POST JSON-RPC `message/stream`, return `{:ok, stream}` of A2A events
+  - [x] `get_task/2` — `tasks/get`
+  - [x] `cancel_task/2` — `tasks/cancel`
+  - [x] `resubscribe/2` — `tasks/resubscribe`, return SSE stream
+  - [x] Push config CRUD: `set_push_config/2`, `get_push_config/2`, `delete_push_config/2`, `list_push_configs/2`
+  - [x] `get_agent_card/1` — GET `/.well-known/agent.json`, returns `AgentCard` struct
+  - [x] `get_extended_card/1` — `agent/getAuthenticatedExtendedCard`
+  - [x] SSE streaming via `spawn_link` + `Stream.resource` + `Req into:` callback
 
-- [ ] **Tests** — Client with mock HTTP (Req test adapter or Plug.Test), RemoteAgent with mock server
+- [x] **A2AEx.RemoteAgent** — ADK agent backed by A2A client
+  - [x] `A2AEx.RemoteAgent.Config` struct (name, url, description, client_opts, agent_card)
+  - [x] `new/1` — Returns `ADK.Agent.CustomAgent` with run function wrapping A2A client
+  - [x] Sync path (`streaming_mode: :none`): `Client.send_message` → convert task result to ADK events
+  - [x] Streaming path (`streaming_mode: :sse`): `Client.stream_message` → `Stream.flat_map` to ADK events
+  - [x] Converts `TaskStatusUpdateEvent` → `ADK.Event` (with error/input_required metadata)
+  - [x] Converts `TaskArtifactUpdateEvent` → `ADK.Event` (partial: true)
+  - [x] Error handling: no user content → error event, failed status → error_code on event
 
-### Reference Files
+- [x] **Tests** — 26 new tests (5 SSE + 11 client + 10 remote_agent), 217 total
+  - [x] SSE: single event, multiple events, incomplete buffering, cross-chunk, non-data lines
+  - [x] Client: constructor, agent card, send/get/cancel, streaming with status+artifacts, req_options
+  - [x] RemoteAgent: constructor, sync echo, streaming echo, artifacts, failed, no content, author, client_opts
+  - [x] All tests use real HTTP servers (Bandit) — no mocks
+
+### Reference Files (Read During Phase 5)
 - `/workspace/a2a-go/a2aclient/client.go` — Client implementation
 - `/workspace/a2a-go/a2aclient/transport.go` — HTTP transport
 - `/workspace/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
+- `/workspace/adk-go/agent/remoteagent/a2a_agent.go` — RemoteAgent implementation
+- `/workspace/adk-go/agent/remoteagent/a2a_agent_run_processor.go` — Event processing
+- `/workspace/adk-go/agent/remoteagent/utils.go` — Session history utilities
 
 ---
 
@@ -241,4 +257,4 @@ Phase 5: Client + RemoteAgent    (consume remote agents, bridge A2A → ADK)
 Phase 6: Integration + Polish     (end-to-end)
 ```
 
-Phases 4 and 5 are independent of each other (both depend on Phase 3). They can be done in parallel.
+Phase 4 (server-side bridge) and Phase 5 (client-side) both depend on Phase 3. Phase 5 RemoteAgent also depends on Phase 4's Converter for A2A→ADK conversion.

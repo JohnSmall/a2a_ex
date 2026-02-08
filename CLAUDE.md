@@ -2,14 +2,14 @@
 
 ## Project Overview
 
-Elixir implementation of the Agent-to-Agent (A2A) protocol. Exposes ADK agents as A2A-compatible HTTP endpoints and consumes remote A2A agents. Depends on the `adk` package (github.com/JohnSmall/adk).
+Elixir implementation of the Agent-to-Agent (A2A) protocol. Full server+client: exposes ADK agents as A2A-compatible HTTP endpoints and consumes remote A2A agents as local ADK agents. Depends on the `adk` package (github.com/JohnSmall/adk).
 
 ## Quick Start
 
 ```bash
 cd /workspace/a2a_ex
 mix deps.get
-mix test          # Run tests (191 passing)
+mix test          # Run tests (217 passing)
 mix credo         # Static analysis (0 issues)
 mix dialyzer      # Type checking (0 errors)
 ```
@@ -24,29 +24,38 @@ mix dialyzer      # Type checking (0 errors)
 
 - **A2A Go SDK (PRIMARY)**: `/workspace/a2a-go/` — Read corresponding Go file before implementing any module
 - **ADK Go source**: `/workspace/adk-go/`
-- **ADK-A2A bridge (Go)**: `/workspace/adk-go/server/adka2a/` — Critical for Phase 4
+- **ADK-A2A bridge (Go)**: `/workspace/adk-go/server/adka2a/` — Reference for Phase 4
+- **ADK RemoteAgent (Go)**: `/workspace/adk-go/agent/remoteagent/` — Reference for Phase 5
 - **A2A Samples**: `/workspace/a2a-samples/`
 - **ADK (Elixir dependency)**: `/workspace/adk/`
 
 ## Current Status
 
-**Phase 4 COMPLETE (191 tests, credo clean, dialyzer clean). Ready for Phase 5 (Client / RemoteAgent).**
+**Phase 5 COMPLETE (217 tests, credo clean, dialyzer clean). Ready for Phase 6 (Integration Testing).**
 
 See `docs/implementation-plan.md` for the full 6-phase plan.
 
 ## Architecture Overview
 
 ```
-A2AEx.Server (@behaviour Plug)
-    → A2AEx.JSONRPC (parse/encode)
-        → A2AEx.RequestHandler (dispatch tables + apply/3 for 10 methods)
-            → A2AEx.AgentExecutor behaviour (execute/cancel)
-            → {A2AEx.ADKExecutor, config} — bridges ADK.Runner into A2A
-                → A2AEx.Converter (ADK ↔ A2A type conversion)
-            → A2AEx.TaskStore behaviour (CRUD tasks)
-            → A2AEx.EventQueue (SSE delivery)
-            → A2AEx.PushConfigStore behaviour (webhook config)
-            → A2AEx.PushSender behaviour (webhook delivery)
+Server Side:
+  A2AEx.Server (@behaviour Plug)
+      → A2AEx.JSONRPC (parse/encode)
+          → A2AEx.RequestHandler (dispatch tables + apply/3 for 10 methods)
+              → A2AEx.AgentExecutor behaviour (execute/cancel)
+              → {A2AEx.ADKExecutor, config} — bridges ADK.Runner into A2A
+                  → A2AEx.Converter (ADK ↔ A2A type conversion)
+              → A2AEx.TaskStore behaviour (CRUD tasks)
+              → A2AEx.EventQueue (SSE delivery)
+              → A2AEx.PushConfigStore behaviour (webhook config)
+              → A2AEx.PushSender behaviour (webhook delivery)
+
+Client Side:
+  A2AEx.Client (Req HTTP + SSE streaming)
+      → A2AEx.Client.SSE (SSE line parser with buffering)
+      → A2AEx.RemoteAgent (ADK agent backed by remote A2A)
+          → ADK.Agent.CustomAgent (wraps run function)
+          → A2AEx.Converter (A2A → ADK event conversion)
 ```
 
 ### Modules
@@ -94,11 +103,19 @@ A2AEx.Server (@behaviour Plug)
 | `A2AEx.ADKExecutor.Config` | `adk_executor.ex` | Config struct (runner, app_name) for ADK executor |
 | `A2AEx.ADKExecutor` | `adk_executor.ex` | Bridges ADK.Runner into A2A — used as `{ADKExecutor, config}` tuple |
 
-#### Phase 5+ (Planned)
-| Module | Purpose | Phase |
-|--------|---------|-------|
-| `A2AEx.RemoteAgent` | ADK agent backed by A2A client | 5 |
-| `A2AEx.Client` | HTTP client for remote A2A agents | 5 |
+#### Phase 5 (Done — 26 new tests, 217 total)
+| Module | File | Purpose |
+|--------|------|---------|
+| `A2AEx.Client.SSE` | `client/sse.ex` | SSE line parser with cross-chunk buffering |
+| `A2AEx.Client` | `client.ex` | HTTP client for all 10 JSON-RPC methods + SSE streaming |
+| `A2AEx.RemoteAgent.Config` | `remote_agent.ex` | Config struct (name, url, description, client_opts) |
+| `A2AEx.RemoteAgent` | `remote_agent.ex` | ADK agent backed by remote A2A server (wraps CustomAgent) |
+
+#### Phase 6 (Planned)
+| Task | Purpose |
+|------|---------|
+| Integration tests | Full server↔client round-trip with ADK agents |
+| Interop tests | Cross-language testing with Go SDK samples |
 
 ## Key Patterns
 
@@ -131,6 +148,37 @@ config = %A2AEx.ADKExecutor.Config{runner: runner, app_name: "my-app"}
 }
 ```
 
+### Client Usage
+
+```elixir
+# Create client
+client = A2AEx.Client.new("http://remote-host:4000")
+
+# Sync: send message and get task result
+{:ok, task} = A2AEx.Client.send_message(client, %{"message" => msg_map})
+
+# Streaming: get lazy event stream
+{:ok, stream} = A2AEx.Client.stream_message(client, %{"message" => msg_map})
+Enum.each(stream, fn event -> IO.inspect(event) end)
+
+# Agent card
+{:ok, card} = A2AEx.Client.get_agent_card(client)
+```
+
+### RemoteAgent Usage
+
+```elixir
+# Wrap a remote A2A agent as a local ADK agent
+config = %A2AEx.RemoteAgent.Config{
+  name: "remote-helper",
+  url: "http://remote-host:4000",
+  description: "A remote helper agent"
+}
+agent = A2AEx.RemoteAgent.new(config)
+
+# Use as sub-agent in orchestration, or run directly via ADK.Runner
+```
+
 ### Server Usage
 
 ```elixir
@@ -156,6 +204,8 @@ plug A2AEx.Server, handler: handler
 11. **Kind discriminator**: All events/parts/tasks include `"kind"` field in JSON for polymorphic decode
 12. **Dispatch tables**: Use module attribute maps + `apply/3` for method dispatch to keep cyclomatic complexity low
 13. **Dialyzer strict types**: If type spec says `String.t()` but runtime value can be nil, use catch-all guards
+14. **Bandit test cleanup**: Bandit has no public `stop/1`; use `Process.exit(server_pid, :normal)` + `Process.sleep(10)` in `on_exit`
+15. **Client.stream_message always succeeds**: Returns `{:ok, stream}` always — errors surface inside the stream; don't add unreachable `{:error, _}` clause
 
 ## Go Reference File Map
 
@@ -176,3 +226,4 @@ plug A2AEx.Server, handler: handler
 | ADKExecutor | `/workspace/adk-go/server/adka2a/executor.go` |
 | Converter | `/workspace/adk-go/server/adka2a/part_converter.go` + `event_converter.go` |
 | Client | `/workspace/a2a-go/a2aclient/client.go` |
+| RemoteAgent | `/workspace/adk-go/agent/remoteagent/a2a_agent.go` |
