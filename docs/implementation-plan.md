@@ -222,19 +222,25 @@ End-to-end tests and documentation.
 
 ### Tasks
 
-- [ ] **Integration tests** — Full server↔client round-trip
-  - [ ] Start server with ADK agent, call via client
-  - [ ] Streaming: SSE events arrive correctly
-  - [ ] Task lifecycle: submit → working → completed
-  - [ ] Task cancellation
-  - [ ] Agent card serving
-  - [ ] Push notifications (mock webhook receiver)
+- [x] **Integration tests** — Full server↔client round-trip (14 new tests, 231 total)
+  - [x] Sync: ADK agent → ADKExecutor → Server → Client → completed task with artifacts
+  - [x] Streaming: SSE events arrive correctly (working → artifacts → completed)
+  - [x] Multi-event agent: append tracking, shared artifact_id
+  - [x] Error: agent raises → failed task state
+  - [x] Escalation: agent escalates → input-required state
+  - [x] Agent card served via client
+  - [x] Task lifecycle: get task after completion, multi-turn conversation resumes context
+  - [x] Task cancellation: cancel streaming task → canceled state
+  - [x] Push CRUD: set/get/list/delete push configs over HTTP
+  - [x] Push sender: delivers to real webhook (Bandit receiver + Agent collector)
+  - [x] RemoteAgent: sync and streaming modes return ADK events
+  - [x] Multi-agent orchestration: SequentialAgent with local + remote sub-agents
 
-- [ ] **Interop tests** — Test against A2A Go SDK samples
+- [ ] **Interop tests** — Test against A2A Go SDK samples (deferred — requires Go binary builds)
   - [ ] A2AEx client → Go sample server
   - [ ] Go sample client → A2AEx server
 
-- [ ] **Documentation** — Hex docs, examples
+- [ ] **Documentation** — Hex docs, examples (deferred)
   - [ ] Module docs for all public modules
   - [ ] Usage examples in README
   - [ ] Getting started guide

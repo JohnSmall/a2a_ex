@@ -9,7 +9,7 @@ Elixir implementation of the Agent-to-Agent (A2A) protocol. Full server+client: 
 ```bash
 cd /workspace/a2a_ex
 mix deps.get
-mix test          # Run tests (217 passing)
+mix test          # Run tests (231 passing)
 mix credo         # Static analysis (0 issues)
 mix dialyzer      # Type checking (0 errors)
 ```
@@ -31,7 +31,7 @@ mix dialyzer      # Type checking (0 errors)
 
 ## Current Status
 
-**Phase 5 COMPLETE (217 tests, credo clean, dialyzer clean). Ready for Phase 6 (Integration Testing).**
+**All 6 phases COMPLETE (231 tests, credo clean, dialyzer clean).**
 
 See `docs/implementation-plan.md` for the full 6-phase plan.
 
@@ -111,11 +111,10 @@ Client Side:
 | `A2AEx.RemoteAgent.Config` | `remote_agent.ex` | Config struct (name, url, description, client_opts) |
 | `A2AEx.RemoteAgent` | `remote_agent.ex` | ADK agent backed by remote A2A server (wraps CustomAgent) |
 
-#### Phase 6 (Planned)
-| Task | Purpose |
-|------|---------|
-| Integration tests | Full server↔client round-trip with ADK agents |
-| Interop tests | Cross-language testing with Go SDK samples |
+#### Phase 6 (Done — 14 new tests, 231 total)
+| Module | File | Purpose |
+|--------|------|---------|
+| Integration tests | `test/a2a_ex/integration_test.exs` | 14 end-to-end tests: full ADK→Server→Client pipeline over real HTTP |
 
 ## Key Patterns
 

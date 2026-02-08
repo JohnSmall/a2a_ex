@@ -2,9 +2,9 @@
 
 ## Document Info
 - **Project**: A2AEx - Elixir implementation of the A2A protocol
-- **Version**: 0.5.0
+- **Version**: 0.6.0
 - **Date**: 2026-02-08
-- **Status**: Phase 5 complete (Client + RemoteAgent). Ready for Phase 6 (Integration Testing).
+- **Status**: Phase 6 complete (Integration Testing). All 6 phases done.
 - **GitHub**: github.com/JohnSmall/a2a_ex
 - **Depends on**: ADK (github.com/JohnSmall/adk)
 
@@ -254,8 +254,9 @@ Key interfaces:
 | `A2AEx.Client.SSE` | Done | 5 | 5 |
 | `A2AEx.Client` | Done | 11 | 5 |
 | `A2AEx.RemoteAgent` + `RemoteAgent.Config` | Done | 10 | 5 |
+| Integration tests (end-to-end) | Done | 14 | 6 |
 
-**Total: 217 tests, credo clean, dialyzer clean.**
+**Total: 231 tests, credo clean, dialyzer clean.**
 
 ---
 

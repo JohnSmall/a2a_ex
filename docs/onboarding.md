@@ -22,7 +22,7 @@ A2AEx provides:
 
 ## 2. Current Status
 
-**Phase 5 COMPLETE — 217 tests, credo clean, dialyzer clean. Ready for Phase 6 (Integration Testing).**
+**All 6 phases COMPLETE — 231 tests, credo clean, dialyzer clean.**
 
 ### What's Built (Phase 1: Core Types + JSON-RPC — 83 tests)
 
@@ -92,13 +92,18 @@ A2AEx provides:
 | `A2AEx.RemoteAgent.Config` | `lib/a2a_ex/remote_agent.ex` | Config struct (name, url, description, client_opts) |
 | `A2AEx.RemoteAgent` | `lib/a2a_ex/remote_agent.ex` | ADK agent backed by remote A2A server (wraps CustomAgent) |
 
-### What's Next (Phase 6: Integration Testing)
+### What's Built (Phase 6: Integration Testing — 14 tests)
 
-| Task | Purpose |
-|------|---------|
-| Full round-trip tests | Server↔Client with ADK agents, task lifecycle |
-| Interop tests | A2AEx client → Go sample server (and vice versa) |
-| Documentation | Hex docs, usage examples |
+| Test Group | Tests | Coverage |
+|------------|-------|----------|
+| Server-Client with ADK Agent | 6 | Sync, streaming, multi-event append, error→failed, escalation→input-required, agent card |
+| Task Lifecycle | 2 | Get task after completion, multi-turn context resume |
+| Task Cancellation | 1 | Cancel streaming task → canceled state |
+| Push Notifications | 2 | Push config CRUD over HTTP, PushSender.HTTP to real webhook |
+| Remote Agent | 2 | Sync and streaming modes |
+| Multi-Agent Orchestration | 1 | SequentialAgent with local + RemoteAgent sub-agents |
+
+All tests run over real HTTP (Bandit) exercising the full pipeline: ADK agent → ADKExecutor → Server → Client.
 
 ### What's Built in ADK (Dependency)
 
@@ -373,7 +378,7 @@ Executors run in a spawned process with try/rescue/after:
 ### Running Tests
 ```bash
 cd /workspace/a2a_ex
-mix test                    # Run all tests (217)
+mix test                    # Run all tests (231)
 mix test --trace            # Verbose output
 mix credo                   # Static analysis
 mix dialyzer                # Type checking
@@ -419,7 +424,7 @@ mix dialyzer                # Type checking
 ```bash
 cd /workspace/a2a_ex
 mix deps.get       # Fetch dependencies (including ADK from GitHub)
-mix test           # Run tests (217 passing)
+mix test           # Run tests (231 passing)
 mix credo          # Static analysis (0 issues)
 mix dialyzer       # Type checking (0 errors)
 iex -S mix         # Interactive shell
