@@ -16,7 +16,9 @@ A2AEx provides:
 - **Bridge**: Convert between ADK events and A2A messages/tasks
 - **RemoteAgent**: Wrap a remote A2A agent as a local ADK agent
 
-**This package depends on the ADK package** (github.com/JohnSmall/adk), which provides the agent framework (agents, runner, sessions, tools, LLM abstraction).
+**This package depends on the ADK package** (`adk_ex` at `/workspace/elixir_code/adk_ex/`), which provides the agent framework (agents, runner, sessions, tools, LLM abstraction).
+
+**Example applications** demonstrating A2A agent cooperation are in `/workspace/elixir_code/a2a_ex_examples/`.
 
 ---
 
@@ -107,12 +109,23 @@ All tests run over real HTTP (Bandit) exercising the full pipeline: ADK agent �
 
 ### What's Built in ADK (Dependency)
 
-The ADK package at `/workspace/adk/` has Phases 1-3 complete (168 tests):
+The ADK package at `/workspace/elixir_code/adk_ex/` has Phases 1-5 complete (240 tests):
 - All agent types (LLM, Loop, Sequential, Parallel, Custom)
 - Runner, Flow engine, Tool system
-- Session management (in-memory)
+- Session management (in-memory + Ecto via adk_ex_ecto)
 - Model providers (Gemini, Claude, Mock)
-- Agent transfer
+- Agent transfer, Plugins, Toolsets
+- Memory service, Artifact service, Telemetry
+
+### Examples Project
+
+The examples project at `/workspace/elixir_code/a2a_ex_examples/` demonstrates A2A agent cooperation:
+- **Example 1** (`mix example.research_report`): Pipeline — Researcher → Writer
+- **Example 2** (`mix example.code_review`): Review loop — Developer ↔ Reviewer (max 3 rounds)
+- **Example 3** (`mix example.data_viz`): Data pipeline — Analyst → Visualizer (with embedded CSV)
+
+Each example runs two Claude-powered LlmAgent agents as separate A2A HTTP servers.
+Requires `ANTHROPIC_API_KEY` env var. Future work: mix Codex, Gemini, and Claude agents.
 
 ---
 
@@ -122,15 +135,16 @@ The ADK package at `/workspace/adk/` has Phases 1-3 complete (168 tests):
 
 | Resource | Location |
 |----------|----------|
-| **This project (A2AEx)** | `/workspace/a2a_ex/` |
-| **ADK (dependency)** | `/workspace/adk/` |
-| **A2A Go SDK (PRIMARY reference)** | `/workspace/a2a-go/` |
-| **ADK Go source** | `/workspace/adk-go/` |
-| **ADK-A2A bridge (Go)** | `/workspace/adk-go/server/adka2a/` |
-| **A2A samples** | `/workspace/a2a-samples/` |
-| **PRD** | `/workspace/a2a_ex/docs/prd.md` |
-| **Implementation plan** | `/workspace/a2a_ex/docs/implementation-plan.md` |
-| **This guide** | `/workspace/a2a_ex/docs/onboarding.md` |
+| **This project (A2AEx)** | `/workspace/elixir_code/a2a_ex/` |
+| **ADK (dependency)** | `/workspace/elixir_code/adk_ex/` |
+| **A2A Examples** | `/workspace/elixir_code/a2a_ex_examples/` |
+| **A2A Go SDK (PRIMARY reference)** | `/workspace/samples/a2a-go/` |
+| **ADK Go source** | `/workspace/samples/adk-go/` |
+| **ADK-A2A bridge (Go)** | `/workspace/samples/adk-go/server/adka2a/` |
+| **A2A samples** | `/workspace/samples/a2a-samples/` |
+| **PRD** | `/workspace/elixir_code/a2a_ex/docs/prd.md` |
+| **Implementation plan** | `/workspace/elixir_code/a2a_ex/docs/implementation-plan.md` |
+| **This guide** | `/workspace/elixir_code/a2a_ex/docs/onboarding.md` |
 
 ### External Documentation
 
@@ -258,37 +272,37 @@ Key conversion rules (implemented in `A2AEx.Converter`):
 Read these files in order when implementing each phase:
 
 ### Phase 1: Types + JSON-RPC (DONE)
-- `/workspace/a2a-go/a2a/core.go` — Core types (Task, Message, Part, Artifact, events, params)
-- `/workspace/a2a-go/a2a/agent.go` — AgentCard, AgentCapabilities, AgentSkill, AgentProvider
-- `/workspace/a2a-go/a2a/push.go` — Push notification types
-- `/workspace/a2a-go/a2a/auth.go` — Security scheme types
-- `/workspace/a2a-go/a2a/errors.go` — Error sentinel values
-- `/workspace/a2a-go/internal/jsonrpc/jsonrpc.go` — Error codes, method names
-- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSON-RPC handler, request/response structs
+- `/workspace/samples/a2a-go/a2a/core.go` — Core types (Task, Message, Part, Artifact, events, params)
+- `/workspace/samples/a2a-go/a2a/agent.go` — AgentCard, AgentCapabilities, AgentSkill, AgentProvider
+- `/workspace/samples/a2a-go/a2a/push.go` — Push notification types
+- `/workspace/samples/a2a-go/a2a/auth.go` — Security scheme types
+- `/workspace/samples/a2a-go/a2a/errors.go` — Error sentinel values
+- `/workspace/samples/a2a-go/internal/jsonrpc/jsonrpc.go` — Error codes, method names
+- `/workspace/samples/a2a-go/a2asrv/jsonrpc.go` — JSON-RPC handler, request/response structs
 
 ### Phase 2: Storage + Execution (DONE)
-- `/workspace/a2a-go/a2asrv/tasks.go` — TaskStore interface
-- `/workspace/a2a-go/a2asrv/eventqueue/` — EventQueue, Manager, InMemory implementations
-- `/workspace/a2a-go/a2asrv/agentexec.go` — AgentExecutor interface
+- `/workspace/samples/a2a-go/a2asrv/tasks.go` — TaskStore interface
+- `/workspace/samples/a2a-go/a2asrv/eventqueue/` — EventQueue, Manager, InMemory implementations
+- `/workspace/samples/a2a-go/a2asrv/agentexec.go` — AgentExecutor interface
 
 ### Phase 3: Server (DONE)
-- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch
-- `/workspace/a2a-go/a2asrv/handler.go` — RequestHandler interface + implementation
-- `/workspace/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
-- `/workspace/a2a-go/internal/sse/sse.go` — SSE writer (WriteHeaders, WriteData, WriteKeepAlive)
+- `/workspace/samples/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch
+- `/workspace/samples/a2a-go/a2asrv/handler.go` — RequestHandler interface + implementation
+- `/workspace/samples/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
+- `/workspace/samples/a2a-go/internal/sse/sse.go` — SSE writer (WriteHeaders, WriteData, WriteKeepAlive)
 
 ### Phase 4: ADK Bridge (DONE)
-- `/workspace/adk-go/server/adka2a/executor.go` — ADK Runner → AgentExecutor wrapper
-- `/workspace/adk-go/server/adka2a/part_converter.go` — Part type conversion
-- `/workspace/adk-go/server/adka2a/event_converter.go` — Event → A2A event conversion
+- `/workspace/samples/adk-go/server/adka2a/executor.go` — ADK Runner → AgentExecutor wrapper
+- `/workspace/samples/adk-go/server/adka2a/part_converter.go` — Part type conversion
+- `/workspace/samples/adk-go/server/adka2a/event_converter.go` — Event → A2A event conversion
 
 ### Phase 5: Client + RemoteAgent (DONE)
-- `/workspace/a2a-go/a2aclient/client.go` — Client implementation
-- `/workspace/a2a-go/a2aclient/transport.go` — HTTP transport
-- `/workspace/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
-- `/workspace/adk-go/agent/remoteagent/a2a_agent.go` — RemoteAgent implementation
-- `/workspace/adk-go/agent/remoteagent/a2a_agent_run_processor.go` — Event processing
-- `/workspace/adk-go/agent/remoteagent/utils.go` — Session history utilities
+- `/workspace/samples/a2a-go/a2aclient/client.go` — Client implementation
+- `/workspace/samples/a2a-go/a2aclient/transport.go` — HTTP transport
+- `/workspace/samples/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
+- `/workspace/samples/adk-go/agent/remoteagent/a2a_agent.go` — RemoteAgent implementation
+- `/workspace/samples/adk-go/agent/remoteagent/a2a_agent_run_processor.go` — Event processing
+- `/workspace/samples/adk-go/agent/remoteagent/utils.go` — Session history utilities
 
 ---
 
@@ -377,7 +391,7 @@ Executors run in a spawned process with try/rescue/after:
 
 ### Running Tests
 ```bash
-cd /workspace/a2a_ex
+cd /workspace/elixir_code/a2a_ex
 mix test                    # Run all tests (231)
 mix test --trace            # Verbose output
 mix credo                   # Static analysis
@@ -416,14 +430,16 @@ mix dialyzer                # Type checking
 20. **`Client.stream_message/2` always returns `{:ok, stream}`**: The streaming function always succeeds at the call site — HTTP and parsing errors surface inside the stream itself. Don't add an unreachable `{:error, _}` clause.
 21. **RemoteAgent wraps CustomAgent**: `A2AEx.RemoteAgent.new/1` returns an `ADK.Agent.CustomAgent` struct, not a custom behaviour implementation. This reuses CustomAgent's before/after callback machinery.
 22. **Streaming mode dispatch**: RemoteAgent checks `ctx.run_config.streaming_mode` to choose between `Client.send_message` (sync) and `Client.stream_message` (SSE). Default is `:none` (sync).
+23. **Dep name must match app name**: The ADK dependency MUST be declared as `{:adk_ex, path: "../adk_ex"}` (not `{:adk, ...}`). Mix fails to resolve code paths when the dep name (`:adk`) differs from the app name (`:adk_ex`). This was changed from the original `{:adk, github: "JohnSmall/adk"}`.
+24. **OpenTelemetry dep**: adk_ex's `{:opentelemetry, "~> 1.5"}` must NOT have `only: [:dev, :test]` — it's needed at compile time in all environments.
 
 ---
 
 ## 9. Quick Commands
 
 ```bash
-cd /workspace/a2a_ex
-mix deps.get       # Fetch dependencies (including ADK from GitHub)
+cd /workspace/elixir_code/a2a_ex
+mix deps.get       # Fetch dependencies (ADK from local path ../adk_ex)
 mix test           # Run tests (231 passing)
 mix credo          # Static analysis (0 issues)
 mix dialyzer       # Type checking (0 errors)
@@ -436,5 +452,6 @@ mix clean && mix compile  # Clean build
 ## 10. Key Contacts / Context
 
 - **Project owner**: John Small (jds340@gmail.com)
-- **A2AEx project**: `/workspace/a2a_ex/` (github.com/JohnSmall/a2a_ex)
-- **ADK project**: `/workspace/adk/` (github.com/JohnSmall/adk)
+- **A2AEx project**: `/workspace/elixir_code/a2a_ex/` (github.com/JohnSmall/a2a_ex)
+- **ADK project**: `/workspace/elixir_code/adk_ex/` (github.com/JohnSmall/adk_ex)
+- **A2A Examples**: `/workspace/elixir_code/a2a_ex_examples/` — Example apps using A2A protocol

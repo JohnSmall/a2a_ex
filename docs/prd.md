@@ -48,9 +48,9 @@ The Agent-to-Agent (A2A) protocol defines a standard HTTP-based interface for AI
 ### 2.3 Reference Materials
 
 - **A2A Protocol Spec**: https://github.com/a2aproject/A2A
-- **A2A Go SDK (PRIMARY reference)**: `/workspace/a2a-go/`
-- **A2A Samples**: `/workspace/a2a-samples/` (Python, Go, Java, JS/TS, C#)
-- **ADK-A2A Bridge (Go)**: `/workspace/adk-go/server/adka2a/`
+- **A2A Go SDK (PRIMARY reference)**: `/workspace/samples/a2a-go/`
+- **A2A Samples**: `/workspace/samples/a2a-samples/` (Python, Go, Java, JS/TS, C#)
+- **ADK-A2A Bridge (Go)**: `/workspace/samples/adk-go/server/adka2a/`
 
 ### 2.4 Architecture of A2A Go SDK
 

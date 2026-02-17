@@ -2,12 +2,12 @@
 
 ## Project Overview
 
-Elixir implementation of the Agent-to-Agent (A2A) protocol. Full server+client: exposes ADK agents as A2A-compatible HTTP endpoints and consumes remote A2A agents as local ADK agents. Depends on the `adk` package (github.com/JohnSmall/adk).
+Elixir implementation of the Agent-to-Agent (A2A) protocol. Full server+client: exposes ADK agents as A2A-compatible HTTP endpoints and consumes remote A2A agents as local ADK agents. Depends on the `adk_ex` package (path dep: `../adk_ex`).
 
 ## Quick Start
 
 ```bash
-cd /workspace/a2a_ex
+cd /workspace/elixir_code/a2a_ex
 mix deps.get
 mix test          # Run tests (231 passing)
 mix credo         # Static analysis (0 issues)
@@ -22,12 +22,13 @@ mix dialyzer      # Type checking (0 errors)
 
 ## Reference Codebases
 
-- **A2A Go SDK (PRIMARY)**: `/workspace/a2a-go/` — Read corresponding Go file before implementing any module
-- **ADK Go source**: `/workspace/adk-go/`
-- **ADK-A2A bridge (Go)**: `/workspace/adk-go/server/adka2a/` — Reference for Phase 4
-- **ADK RemoteAgent (Go)**: `/workspace/adk-go/agent/remoteagent/` — Reference for Phase 5
-- **A2A Samples**: `/workspace/a2a-samples/`
-- **ADK (Elixir dependency)**: `/workspace/adk/`
+- **A2A Go SDK (PRIMARY)**: `/workspace/samples/a2a-go/` — Read corresponding Go file before implementing any module
+- **ADK Go source**: `/workspace/samples/adk-go/`
+- **ADK-A2A bridge (Go)**: `/workspace/samples/adk-go/server/adka2a/` — Reference for Phase 4
+- **ADK RemoteAgent (Go)**: `/workspace/samples/adk-go/agent/remoteagent/` — Reference for Phase 5
+- **A2A Samples**: `/workspace/samples/a2a-samples/`
+- **ADK (Elixir dependency)**: `/workspace/elixir_code/adk_ex/`
+- **A2A Examples**: `/workspace/elixir_code/a2a_ex_examples/` — Example apps using A2A protocol
 
 ## Current Status
 
@@ -190,7 +191,7 @@ plug A2AEx.Server, handler: handler
 
 ## Critical Rules
 
-1. **Read Go reference first**: Before implementing any module, read the corresponding file in `/workspace/a2a-go/`
+1. **Read Go reference first**: Before implementing any module, read the corresponding file in `/workspace/samples/a2a-go/`
 2. **Compile order**: Define nested modules BEFORE parent modules in the same file
 3. **Avoid MapSet**: Use `%{key => true}` maps (dialyzer opaque type issues)
 4. **Credo nesting**: Max depth 2 — extract inner logic into helper functions
@@ -210,19 +211,19 @@ plug A2AEx.Server, handler: handler
 
 | A2AEx Module | Read This Go File |
 |-------------|-------------------|
-| Types (Part, Message, Task, etc.) | `/workspace/a2a-go/a2a/core.go` |
-| AgentCard, Skills, Capabilities | `/workspace/a2a-go/a2a/agent.go` |
-| Push notification types | `/workspace/a2a-go/a2a/push.go` |
-| Error definitions | `/workspace/a2a-go/a2a/errors.go` |
-| JSONRPC (error codes, methods) | `/workspace/a2a-go/internal/jsonrpc/jsonrpc.go` |
-| JSONRPC handler (dispatch) | `/workspace/a2a-go/a2asrv/jsonrpc.go` |
-| TaskStore | `/workspace/a2a-go/a2asrv/tasks.go` |
-| EventQueue | `/workspace/a2a-go/a2asrv/eventqueue/` |
-| AgentExecutor | `/workspace/a2a-go/a2asrv/agentexec.go` |
-| RequestHandler | `/workspace/a2a-go/a2asrv/handler.go` |
-| PushConfigStore + Sender | `/workspace/a2a-go/a2asrv/push/` |
-| SSE writer | `/workspace/a2a-go/internal/sse/sse.go` |
-| ADKExecutor | `/workspace/adk-go/server/adka2a/executor.go` |
-| Converter | `/workspace/adk-go/server/adka2a/part_converter.go` + `event_converter.go` |
-| Client | `/workspace/a2a-go/a2aclient/client.go` |
-| RemoteAgent | `/workspace/adk-go/agent/remoteagent/a2a_agent.go` |
+| Types (Part, Message, Task, etc.) | `/workspace/samples/a2a-go/a2a/core.go` |
+| AgentCard, Skills, Capabilities | `/workspace/samples/a2a-go/a2a/agent.go` |
+| Push notification types | `/workspace/samples/a2a-go/a2a/push.go` |
+| Error definitions | `/workspace/samples/a2a-go/a2a/errors.go` |
+| JSONRPC (error codes, methods) | `/workspace/samples/a2a-go/internal/jsonrpc/jsonrpc.go` |
+| JSONRPC handler (dispatch) | `/workspace/samples/a2a-go/a2asrv/jsonrpc.go` |
+| TaskStore | `/workspace/samples/a2a-go/a2asrv/tasks.go` |
+| EventQueue | `/workspace/samples/a2a-go/a2asrv/eventqueue/` |
+| AgentExecutor | `/workspace/samples/a2a-go/a2asrv/agentexec.go` |
+| RequestHandler | `/workspace/samples/a2a-go/a2asrv/handler.go` |
+| PushConfigStore + Sender | `/workspace/samples/a2a-go/a2asrv/push/` |
+| SSE writer | `/workspace/samples/a2a-go/internal/sse/sse.go` |
+| ADKExecutor | `/workspace/samples/adk-go/server/adka2a/executor.go` |
+| Converter | `/workspace/samples/adk-go/server/adka2a/part_converter.go` + `event_converter.go` |
+| Client | `/workspace/samples/a2a-go/a2aclient/client.go` |
+| RemoteAgent | `/workspace/samples/adk-go/agent/remoteagent/a2a_agent.go` |

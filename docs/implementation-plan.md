@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implementation phases for the A2A protocol Elixir package. Each phase builds on the previous. The A2A Go SDK (`/workspace/a2a-go/`) is the primary reference.
+Implementation phases for the A2A protocol Elixir package. Each phase builds on the previous. The A2A Go SDK (`/workspace/samples/a2a-go/`) is the primary reference.
 
 ---
 
@@ -38,13 +38,13 @@ Foundation types and JSON-RPC encode/decode layer.
 - [x] **Tests** — 83 tests: types serialization round-trip, JSON-RPC encode/decode, error codes
 
 ### Reference Files (Read During Phase 1)
-- `/workspace/a2a-go/a2a/core.go` — Core types (Task, Message, Part, Artifact, events, params)
-- `/workspace/a2a-go/a2a/agent.go` — AgentCard, AgentCapabilities, AgentSkill, AgentProvider
-- `/workspace/a2a-go/a2a/push.go` — Push notification types (PushConfig, PushAuthInfo, param types)
-- `/workspace/a2a-go/a2a/auth.go` — Security scheme types (OpenAPI 3.0 style)
-- `/workspace/a2a-go/a2a/errors.go` — Error sentinel values
-- `/workspace/a2a-go/internal/jsonrpc/jsonrpc.go` — Error codes, method names, error conversion
-- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSON-RPC request/response structs, handler dispatch
+- `/workspace/samples/a2a-go/a2a/core.go` — Core types (Task, Message, Part, Artifact, events, params)
+- `/workspace/samples/a2a-go/a2a/agent.go` — AgentCard, AgentCapabilities, AgentSkill, AgentProvider
+- `/workspace/samples/a2a-go/a2a/push.go` — Push notification types (PushConfig, PushAuthInfo, param types)
+- `/workspace/samples/a2a-go/a2a/auth.go` — Security scheme types (OpenAPI 3.0 style)
+- `/workspace/samples/a2a-go/a2a/errors.go` — Error sentinel values
+- `/workspace/samples/a2a-go/internal/jsonrpc/jsonrpc.go` — Error codes, method names, error conversion
+- `/workspace/samples/a2a-go/a2asrv/jsonrpc.go` — JSON-RPC request/response structs, handler dispatch
 
 ---
 
@@ -80,9 +80,9 @@ Storage and execution behaviours with in-memory implementations.
 - [x] **Tests** — TaskStore CRUD, EventQueue pub/sub, AgentExecutor mock (31 new tests)
 
 ### Reference Files
-- `/workspace/a2a-go/a2asrv/tasks.go` — TaskStore interface
-- `/workspace/a2a-go/a2asrv/eventqueue/` — EventQueue, Manager, InMemory implementations
-- `/workspace/a2a-go/a2asrv/agentexec.go` — AgentExecutor interface
+- `/workspace/samples/a2a-go/a2asrv/tasks.go` — TaskStore interface
+- `/workspace/samples/a2a-go/a2asrv/eventqueue/` — EventQueue, Manager, InMemory implementations
+- `/workspace/samples/a2a-go/a2asrv/agentexec.go` — AgentExecutor interface
 
 ---
 
@@ -122,9 +122,9 @@ JSON-RPC method handlers and Plug-based HTTP server.
 - [x] **Tests** — RequestHandler unit tests (mock executor), Server integration tests (Plug.Test), PushConfigStore tests (158 total)
 
 ### Reference Files
-- `/workspace/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch
-- `/workspace/a2a-go/a2asrv/handler.go` — RequestHandler interface + implementation
-- `/workspace/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
+- `/workspace/samples/a2a-go/a2asrv/jsonrpc.go` — JSONRPC handler + method dispatch
+- `/workspace/samples/a2a-go/a2asrv/handler.go` — RequestHandler interface + implementation
+- `/workspace/samples/a2a-go/a2asrv/push/` — PushConfigStore + PushSender
 
 ---
 
@@ -163,9 +163,9 @@ Connect A2AEx to ADK — expose ADK agents as A2A endpoints.
   - [x] ADKExecutor: text response flow, multi-event append, error/escalation states, cancel, last_chunk, integration via RequestHandler
 
 ### Reference Files
-- `/workspace/adk-go/server/adka2a/executor.go` — ADK Executor wrapper
-- `/workspace/adk-go/server/adka2a/part_converter.go` — Part conversion
-- `/workspace/adk-go/server/adka2a/event_converter.go` — Event conversion
+- `/workspace/samples/adk-go/server/adka2a/executor.go` — ADK Executor wrapper
+- `/workspace/samples/adk-go/server/adka2a/part_converter.go` — Part conversion
+- `/workspace/samples/adk-go/server/adka2a/event_converter.go` — Event conversion
 
 ---
 
@@ -207,12 +207,12 @@ HTTP client for consuming remote A2A agents, and RemoteAgent (ADK agent backed b
   - [x] All tests use real HTTP servers (Bandit) — no mocks
 
 ### Reference Files (Read During Phase 5)
-- `/workspace/a2a-go/a2aclient/client.go` — Client implementation
-- `/workspace/a2a-go/a2aclient/transport.go` — HTTP transport
-- `/workspace/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
-- `/workspace/adk-go/agent/remoteagent/a2a_agent.go` — RemoteAgent implementation
-- `/workspace/adk-go/agent/remoteagent/a2a_agent_run_processor.go` — Event processing
-- `/workspace/adk-go/agent/remoteagent/utils.go` — Session history utilities
+- `/workspace/samples/a2a-go/a2aclient/client.go` — Client implementation
+- `/workspace/samples/a2a-go/a2aclient/transport.go` — HTTP transport
+- `/workspace/samples/a2a-go/a2aclient/jsonrpc.go` — Client-side JSON-RPC helpers
+- `/workspace/samples/adk-go/agent/remoteagent/a2a_agent.go` — RemoteAgent implementation
+- `/workspace/samples/adk-go/agent/remoteagent/a2a_agent_run_processor.go` — Event processing
+- `/workspace/samples/adk-go/agent/remoteagent/utils.go` — Session history utilities
 
 ---
 
