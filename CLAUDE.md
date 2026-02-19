@@ -151,8 +151,11 @@ config = %A2AEx.ADKExecutor.Config{runner: runner, app_name: "my-app"}
 ### Client Usage
 
 ```elixir
-# Create client
+# Create client (default receive_timeout: 120s for LLM-backed agents)
 client = A2AEx.Client.new("http://remote-host:4000")
+
+# Override timeout for fast/local agents
+client = A2AEx.Client.new("http://remote-host:4000", receive_timeout: 5_000)
 
 # Sync: send message and get task result
 {:ok, task} = A2AEx.Client.send_message(client, %{"message" => msg_map})
@@ -206,6 +209,8 @@ plug A2AEx.Server, handler: handler
 13. **Dialyzer strict types**: If type spec says `String.t()` but runtime value can be nil, use catch-all guards
 14. **Bandit test cleanup**: Bandit has no public `stop/1`; use `Process.exit(server_pid, :normal)` + `Process.sleep(10)` in `on_exit`
 15. **Client.stream_message always succeeds**: Returns `{:ok, stream}` always — errors surface inside the stream; don't add unreachable `{:error, _}` clause
+16. **Client default timeout is 120s**: `Client.new/2` sets `receive_timeout: 120_000` by default (Req's default of 15s is too short for LLM-backed agents). Callers can override via opts. The server-side `collect_events` timeout in `RequestHandler` is also 120s to match.
+17. **TCK mix task uses `apply/3` for Bandit**: `tck_server.ex` calls `apply(Bandit, :start_link, [...])` instead of `Bandit.start_link(...)` to avoid compile warnings when Bandit is unavailable (it's `only: [:dev, :test]` and not present when `a2a_ex` is compiled as a path dependency)
 
 ## Go Reference File Map
 

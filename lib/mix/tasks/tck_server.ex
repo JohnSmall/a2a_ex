@@ -30,7 +30,11 @@ defmodule Mix.Tasks.Tck.Server do
       agent_card: build_agent_card(port)
     }
 
-    {:ok, _} = Bandit.start_link(plug: {A2AEx.Server, [handler: handler]}, port: port)
+    unless Code.ensure_loaded?(Bandit) do
+      Mix.raise("Bandit is required to run the TCK server. Add {:bandit, \"~> 1.0\"} to your deps.")
+    end
+
+    {:ok, _} = apply(Bandit, :start_link, [[plug: {A2AEx.Server, [handler: handler]}, port: port]])
 
     Mix.shell().info("TCK SUT running on http://localhost:#{port}")
     Mix.shell().info("Agent card at http://localhost:#{port}/.well-known/agent-card.json")

@@ -37,10 +37,14 @@ defmodule A2AEx.Client do
   @agent_card_path "/.well-known/agent.json"
   @content_type_json {"content-type", "application/json"}
   @accept_sse {"accept", "text/event-stream"}
+  # A2A calls typically invoke LLM agents that need 30-120 seconds to respond.
+  @default_receive_timeout 120_000
 
   @doc "Create a new client for the given base URL."
   @spec new(String.t(), keyword()) :: t()
   def new(base_url, opts \\ []) do
+    opts = Keyword.put_new(opts, :receive_timeout, @default_receive_timeout)
+
     %__MODULE__{
       base_url: String.trim_trailing(base_url, "/"),
       req_options: opts

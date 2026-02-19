@@ -118,7 +118,7 @@ defmodule A2AEx.RequestHandler do
       {:a2a_done, ^task_id} ->
         load_task_result(handler, task_id)
     after
-      60_000 -> {:error, A2AEx.Error.new(:internal_error, "execution timeout")}
+      120_000 -> {:error, A2AEx.Error.new(:internal_error, "execution timeout")}
     end
   end
 

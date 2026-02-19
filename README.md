@@ -53,7 +53,7 @@ Plug.Cowboy.http(A2AEx.Server, [handler: handler], port: 4000)
 ### Consume a Remote A2A Agent
 
 ```elixir
-# As a standalone client
+# As a standalone client (default receive_timeout: 120s for LLM-backed agents)
 client = A2AEx.Client.new("http://remote-host:4000")
 {:ok, card} = A2AEx.Client.get_agent_card(client)
 
