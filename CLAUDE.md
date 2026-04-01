@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Elixir implementation of the Agent-to-Agent (A2A) protocol. Full server+client: exposes ADK agents as A2A-compatible HTTP endpoints and consumes remote A2A agents as local ADK agents. Depends on the `adk_ex` package (path dep: `../adk_ex`).
+Elixir implementation of the Agent-to-Agent (A2A) protocol. Full server+client: exposes ADK agents as A2A-compatible HTTP endpoints and consumes remote A2A agents as local ADK agents. Depends on the `adk_ex` package (GitHub: `JohnSmall/adk_ex`).
 
 ## Quick Start
 

@@ -430,7 +430,7 @@ mix dialyzer                # Type checking
 20. **`Client.stream_message/2` always returns `{:ok, stream}`**: The streaming function always succeeds at the call site — HTTP and parsing errors surface inside the stream itself. Don't add an unreachable `{:error, _}` clause.
 21. **RemoteAgent wraps CustomAgent**: `A2AEx.RemoteAgent.new/1` returns an `ADK.Agent.CustomAgent` struct, not a custom behaviour implementation. This reuses CustomAgent's before/after callback machinery.
 22. **Streaming mode dispatch**: RemoteAgent checks `ctx.run_config.streaming_mode` to choose between `Client.send_message` (sync) and `Client.stream_message` (SSE). Default is `:none` (sync).
-23. **Dep name must match app name**: The ADK dependency MUST be declared as `{:adk_ex, path: "../adk_ex"}` (not `{:adk, ...}`). Mix fails to resolve code paths when the dep name (`:adk`) differs from the app name (`:adk_ex`). This was changed from the original `{:adk, github: "JohnSmall/adk"}`.
+23. **Dep name must match app name**: The ADK dependency MUST be declared as `{:adk_ex, github: "JohnSmall/adk_ex"}` (not `{:adk, ...}`). Mix fails to resolve code paths when the dep name (`:adk`) differs from the app name (`:adk_ex`).
 24. **OpenTelemetry dep**: adk_ex's `{:opentelemetry, "~> 1.5"}` must NOT have `only: [:dev, :test]` — it's needed at compile time in all environments.
 
 ---
@@ -439,7 +439,7 @@ mix dialyzer                # Type checking
 
 ```bash
 cd /workspace/elixir_code/a2a_ex
-mix deps.get       # Fetch dependencies (ADK from local path ../adk_ex)
+mix deps.get       # Fetch dependencies (ADK from GitHub JohnSmall/adk_ex)
 mix test           # Run tests (231 passing)
 mix credo          # Static analysis (0 issues)
 mix dialyzer       # Type checking (0 errors)

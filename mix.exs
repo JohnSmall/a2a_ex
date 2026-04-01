@@ -21,7 +21,7 @@ defmodule A2AEx.MixProject do
 
   defp deps do
     [
-      {:adk, github: "JohnSmall/adk"},
+      {:adk_ex, github: "JohnSmall/adk_ex"},
       {:plug, "~> 1.16"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
