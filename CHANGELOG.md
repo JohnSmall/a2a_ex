@@ -15,7 +15,8 @@ First public release on hex.pm.
   (`message/send`, `message/stream`, `tasks/get`, `tasks/cancel`,
   `tasks/pushNotificationConfig/{set,get,list,delete}`,
   `tasks/resubscribe`, `agent/authenticatedExtendedCard`)
-- Plug-based HTTP endpoint with JSON-RPC dispatch and SSE streaming
+- Plug-based HTTP endpoint (mount under [Bandit](https://hex.pm/packages/bandit)
+  or any Plug-compatible server) with JSON-RPC dispatch and SSE streaming
 - HTTP client for consuming remote A2A agents (sync + SSE streaming)
 - `A2AEx.ADKExecutor` — bridge from `ADK.Runner` into the A2A protocol
 - `A2AEx.Converter` — ADK `Event`/`Content` ↔ A2A `Message`/`Part` conversion

@@ -57,8 +57,8 @@ handler = %A2AEx.RequestHandler{
   agent_card: %A2AEx.AgentCard{name: "My Agent", url: "http://localhost:4000"}
 }
 
-# Start the server with Plug.Cowboy
-Plug.Cowboy.http(A2AEx.Server, [handler: handler], port: 4000)
+# Start the server with Bandit (pure-Elixir HTTP server)
+Bandit.start_link(plug: {A2AEx.Server, handler: handler}, port: 4000)
 ```
 
 ### Consume a Remote A2A Agent

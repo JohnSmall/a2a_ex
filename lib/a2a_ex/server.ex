@@ -19,9 +19,12 @@ defmodule A2AEx.Server do
       # Use as a Plug in your application
       plug A2AEx.Server, handler: handler
 
-  ## With Plug.Cowboy
+  ## With Bandit
 
-      Plug.Cowboy.http(A2AEx.Server, [handler: handler], port: 4000)
+      Bandit.start_link(plug: {A2AEx.Server, handler: handler}, port: 4000)
+
+  [Bandit](https://hex.pm/packages/bandit) is the recommended pure-Elixir
+  HTTP server. Add `{:bandit, "~> 1.0"}` to your deps.
   """
 
   @behaviour Plug

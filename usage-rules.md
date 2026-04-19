@@ -50,7 +50,7 @@ handler = %A2AEx.RequestHandler{
   }
 }
 
-# 4. Start the HTTP server (Bandit or Plug.Cowboy)
+# 4. Start the HTTP server with Bandit (pure-Elixir, recommended)
 {:ok, _} = Bandit.start_link(plug: {A2AEx.Server, handler: handler}, port: 4000)
 ```
 
@@ -138,8 +138,9 @@ end
    to decode — they dispatch on `"kind"`.
 
 7. **No Phoenix, no Plug.Router.** `A2AEx.Server` implements `@behaviour Plug`
-   directly with manual routing. Mount it with Bandit or Plug.Cowboy:
+   directly with manual routing. Mount it with Bandit (pure-Elixir, recommended):
    `Bandit.start_link(plug: {A2AEx.Server, handler: handler}, port: 4000)`.
+   Bandit is not a hard dep — add `{:bandit, "~> 1.0"}` in your app.
 
 8. **Terminal task states are absorbing.** `:completed`, `:canceled`,
    `:failed`, `:rejected` cannot transition further. `A2AEx.Converter` tests

@@ -17,12 +17,16 @@ Only `executor` and `task_store` are required. Omit `push_config_store`/`push_se
 
 ## Mounting the Plug
 
-`A2AEx.Server` is a plain Plug — mount under Bandit or Plug.Cowboy:
+`A2AEx.Server` is a plain Plug. Mount it under [Bandit](https://hex.pm/packages/bandit) (pure-Elixir, recommended):
 
 ```elixir
 Bandit.start_link(plug: {A2AEx.Server, handler: handler}, port: 4000)
-# or
-Plug.Cowboy.http(A2AEx.Server, [handler: handler], port: 4000)
+```
+
+Bandit is not a hard dep of `a2a_elixir_sdk` — add it to your consumer app:
+
+```elixir
+{:bandit, "~> 1.0"}
 ```
 
 Routes exposed:
