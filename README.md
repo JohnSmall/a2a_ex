@@ -1,7 +1,7 @@
 # A2AEx
 
-[![Hex.pm](https://img.shields.io/hexpm/v/a2a_ex.svg)](https://hex.pm/packages/a2a_ex)
-[![Documentation](https://img.shields.io/badge/docs-hexdocs-blue.svg)](https://hexdocs.pm/a2a_ex)
+[![Hex.pm](https://img.shields.io/hexpm/v/a2a_elixir_sdk.svg)](https://hex.pm/packages/a2a_elixir_sdk)
+[![Documentation](https://img.shields.io/badge/docs-hexdocs-blue.svg)](https://hexdocs.pm/a2a_elixir_sdk)
 
 Elixir implementation of the [Agent-to-Agent (A2A) protocol](https://github.com/a2aproject/A2A). Exposes ADK agents as A2A-compatible HTTP endpoints and enables inter-agent communication over JSON-RPC.
 
@@ -22,7 +22,7 @@ Elixir implementation of the [Agent-to-Agent (A2A) protocol](https://github.com/
 # mix.exs
 def deps do
   [
-    {:a2a_ex, "~> 1.0"}
+    {:a2a_elixir_sdk, "~> 1.0"}
   ]
 end
 ```
@@ -31,9 +31,9 @@ end
 
 This package ships a `usage-rules.md` file describing conventions and gotchas for
 agent-assisted development. If you use [`usage_rules`](https://hex.pm/packages/usage_rules)
-in your project, add `"a2a_ex"` (or `"a2a_ex:all"` for sub-rules like
-`a2a_ex:server`, `a2a_ex:client`, `a2a_ex:adk_bridge`, `a2a_ex:types`) to your
-sync list and run `mix usage_rules.sync`.
+in your project, add `"a2a_elixir_sdk"` (or `"a2a_elixir_sdk:all"` for sub-rules like
+`a2a_elixir_sdk:server`, `a2a_elixir_sdk:client`, `a2a_elixir_sdk:adk_bridge`,
+`a2a_elixir_sdk:types`) to your sync list and run `mix usage_rules.sync`.
 
 ### Expose an ADK Agent as an A2A Endpoint
 

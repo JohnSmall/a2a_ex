@@ -2,11 +2,11 @@ defmodule A2AEx.MixProject do
   use Mix.Project
 
   @version "1.0.0"
-  @source_url "https://github.com/JohnSmall/a2a_ex"
+  @source_url "https://github.com/JohnSmall/a2a-elixir-sdk"
 
   def project do
     [
-      app: :a2a_ex,
+      app: :a2a_elixir_sdk,
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
@@ -48,7 +48,7 @@ defmodule A2AEx.MixProject do
 
   defp package do
     [
-      name: "a2a_ex",
+      name: "a2a_elixir_sdk",
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url,

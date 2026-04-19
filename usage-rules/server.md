@@ -83,7 +83,7 @@ Composite key is `{task_id, config_id}` — a single task can have multiple push
 
 ## EventQueue
 
-Started by the `:a2a_ex` application supervisor. Uses `Registry` for per-task lookup + `DynamicSupervisor` for queue processes. Just call:
+Started by the `:a2a_elixir_sdk` application supervisor. Uses `Registry` for per-task lookup + `DynamicSupervisor` for queue processes. Just call:
 
 ```elixir
 A2AEx.EventQueue.enqueue(task_id, event)

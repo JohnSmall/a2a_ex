@@ -1,6 +1,6 @@
-# A2AEx Usage Rules
+# A2A Elixir SDK Usage Rules
 
-`a2a_ex` is an Elixir implementation of the [Agent-to-Agent (A2A) protocol](https://github.com/a2aproject/A2A). It is a full server + client: expose ADK agents as A2A-compatible HTTP endpoints, and consume remote A2A agents as local ADK agents. Depends on [`adk_ex`](https://hex.pm/packages/adk_ex).
+`a2a_elixir_sdk` (module namespace `A2AEx.*`) is an Elixir implementation of the [Agent-to-Agent (A2A) protocol](https://github.com/a2aproject/A2A). It is a full server + client: expose ADK agents as A2A-compatible HTTP endpoints, and consume remote A2A agents as local ADK agents. Depends on [`adk_ex`](https://hex.pm/packages/adk_ex).
 
 ## Architecture
 
@@ -159,7 +159,7 @@ end
   the returned pid in the tuple. It is not automatically started by the
   application supervisor.
 - `EventQueue` uses `Registry` + `DynamicSupervisor`; these *are* started by
-  the `:a2a_ex` application supervisor, so just call `EventQueue.enqueue/2`.
+  the `:a2a_elixir_sdk` application supervisor, so just call `EventQueue.enqueue/2`.
 - Push notifications are opt-in. Only wire `push_config_store` + `push_sender`
   into the `RequestHandler` if you actually want webhook delivery.
 - Bandit has no public `stop/1`. In tests use
@@ -171,7 +171,7 @@ end
 
 For deeper guidance on specific topics, see the `usage-rules/` directory:
 
-- `a2a_ex:server` — building a server, custom executors, stores, push
-- `a2a_ex:client` — client + RemoteAgent, streaming, timeouts
-- `a2a_ex:adk_bridge` — ADKExecutor and Converter semantics
-- `a2a_ex:types` — message/part/task/event encode/decode conventions
+- `a2a_elixir_sdk:server` — building a server, custom executors, stores, push
+- `a2a_elixir_sdk:client` — client + RemoteAgent, streaming, timeouts
+- `a2a_elixir_sdk:adk_bridge` — ADKExecutor and Converter semantics
+- `a2a_elixir_sdk:types` — message/part/task/event encode/decode conventions
